@@ -1,0 +1,192 @@
+﻿// NOT NONE OF THESE SHADERS ARE OPTIMAL THEY ARE SIMPLE!!!
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSBoidMain
+#pragma kernel CSGenerateMesh
+#pragma kernel CSRenderMain
+#pragma kernel CSRenderWipe
+#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
+
+struct Boid
+{
+  float2 pos;
+  float2 dir;
+  float4 col;
+};
+
+int NumBoids;
+float4 Params;
+float4 Params2;
+float4 Params3;
+
+StructuredBuffer<Boid> BoidBuffer;
+ConsumeStructuredBuffer<uint> InBoidBuffer;
+AppendStructuredBuffer<Boid> OutBoidBuffer;
+
+#define REPEL_WEIGHT     (Params.x)
+#define ALIGN_WEIGHT     (Params.y)
+#define COHESION_WEIGHT  (Params.z)
+#define MAX_SPEED        (Params.w)
+
+#define REPEL_DIST       (Params2.x)
+#define ALIGN_DIST       (Params2.y)
+#define COHESION_DIST    (Params2.z)
+#define MAX_FORCE        (Params2.w)
+
+#define INVWEIGHT        (Params3.x)
+#define DELTATIME        (Params3.y)
+#define BOUND            (Params3.z)
+
+//////////////////////////////////////////////
+// MESH GENERATE
+RWStructuredBuffer<float3> BoidMeshVert;
+RWStructuredBuffer<float4> BoidMeshCol;
+RWStructuredBuffer<int> BoidMeshIndexes;
+
+[numthreads(10, 1, 1)] 
+void CSGenerateMesh(uint3 id : SV_DispatchThreadID) {
+  Boid b = BoidBuffer[id.x];
+  float3 worldPos = float3(b.pos.x / BOUND - 0.5f, b.pos.y / BOUND - 0.5f, 0);
+
+  float3 worldDir = float3(b.dir.x, b.dir.y, 0) * 0.002f;
+  float3 upDir = float3(0, 0, -1) * 0.01f;
+  float3 rightDir = normalize(cross(worldDir, float3(0, 0, 1))) * 0.01f;
+
+  // Vertex Position
+  BoidMeshVert[id.x * 4 + 0] = worldPos - worldDir;
+  BoidMeshVert[id.x * 4 + 1] = worldPos + upDir;
+  BoidMeshVert[id.x * 4 + 2] = worldPos - rightDir;
+  BoidMeshVert[id.x * 4 + 3] = worldPos + rightDir;
+
+  // Vertex Colour
+  BoidMeshCol[id.x * 4 + 0] = b.col.argb * 0.5f;
+  BoidMeshCol[id.x * 4 + 1] = b.col.argb;
+  BoidMeshCol[id.x * 4 + 2] = b.col.argb;
+  BoidMeshCol[id.x * 4 + 3] = b.col.argb;
+
+  // Indexes
+  BoidMeshIndexes[id.x * 12 + 0] = id.x * 4 + 0;
+  BoidMeshIndexes[id.x * 12 + 1] = id.x * 4 + 1;
+  BoidMeshIndexes[id.x * 12 + 2] = id.x * 4 + 3;
+  BoidMeshIndexes[id.x * 12 + 3] = id.x * 4 + 0;
+  BoidMeshIndexes[id.x * 12 + 4] = id.x * 4 + 1;
+  BoidMeshIndexes[id.x * 12 + 5] = id.x * 4 + 2;
+  BoidMeshIndexes[id.x * 12 + 6] = id.x * 4 + 0;
+  BoidMeshIndexes[id.x * 12 + 7] = id.x * 4 + 3;
+  BoidMeshIndexes[id.x * 12 + 8] = id.x * 4 + 2;
+  BoidMeshIndexes[id.x * 12 + 9] = id.x * 4 + 1;
+  BoidMeshIndexes[id.x * 12 + 10] = id.x * 4 + 3;
+  BoidMeshIndexes[id.x * 12 + 11] = id.x * 4 + 2;
+}
+
+//////////////////////////////////////////////
+// TEXTURE VERSION
+float4 WipeColour;
+RWTexture2D<float4> Result;
+
+[numthreads(10, 1, 1)]
+void CSRenderMain(uint3 id : SV_DispatchThreadID) {
+  Boid b = BoidBuffer[id.x];
+
+  Result[b.pos.xy] = b.col;
+}
+
+[numthreads(8, 8, 1)]
+void CSRenderWipe(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThreadID) {
+  if ((gid.x == 0) || (gid.y == 0)) {
+    Result[id.xy] = float4(0.1,0.1,0.1,1.0);
+  }
+  else {
+    Result[id.xy] = WipeColour;
+  }
+}
+
+//////////////////////////////////////////////
+// Helpers
+float2 limitVec(float2 v, float l) {
+  float al = length(v);
+  if (al > l) {
+    v = v * l / al;
+  }
+  return v;
+}
+
+float2 maxVec(float2 v, float l) { return v * l / length(v); }
+
+//////////////////////////////////////////////
+[numthreads(10, 1, 1)] 
+void CSBoidMain(uint3 id : SV_DispatchThreadID) {
+// We don't need this consume buffer but you can see how you could have a list of ALIVE boids
+  uint bid = InBoidBuffer.Consume();  
+  Boid b = BoidBuffer[bid];
+
+  //-------------- COMPARE AGAINST OTHERS
+  float3 sepSum = float3(0, 0,0);
+  float3 alignSum = float3(0, 0,0);
+  float3 cohesionSum = float3(0, 0,0);
+
+  // For every boid in the system, check if it's too close
+  for (int i = NumBoids - 1; i >= 0; --i) {
+    if ((int)bid == i)
+      continue;
+
+    // Distance
+    float2 lDiff = b.pos - BoidBuffer[i].pos;
+    float d = length(lDiff);
+
+    // Repel
+    if (d < REPEL_DIST) {
+      sepSum.xy = sepSum.xy + (lDiff * (REPEL_DIST / (d * d)));
+      sepSum.z += 1.0f;
+    }
+
+    // Align
+    if (d < ALIGN_DIST) {
+      alignSum.xy = alignSum.xy + BoidBuffer[i].dir;
+      alignSum.z += 1.0f;
+    }
+
+    // Cohesion
+    if (d < COHESION_DIST) {
+      cohesionSum.xy = cohesionSum.xy + BoidBuffer[i].pos;
+      cohesionSum.z += 1.0f;
+    }
+  }
+
+  // Implement Reynolds: Steering = Desired - Velocity
+  if (sepSum.z > 0.0f) {
+    sepSum.xy = (sepSum.xy / length(sepSum.xy) * MAX_SPEED) - b.dir;
+    sepSum.xy = limitVec(sepSum.xy, MAX_FORCE);
+  }
+
+  if (alignSum.z > 0.0f) {
+    alignSum.xy = (alignSum.xy / length(alignSum.xy) * MAX_SPEED) - b.dir;
+    alignSum.xy = limitVec(alignSum.xy, MAX_FORCE);
+  }
+
+  if (cohesionSum.z > 0.0f) {
+    cohesionSum.xy = cohesionSum.xy / cohesionSum.z; // Average Position
+
+    cohesionSum.xy = cohesionSum.xy - b.pos;
+    cohesionSum.xy = (cohesionSum.xy / length(cohesionSum.xy) * MAX_SPEED) - b.dir;
+    cohesionSum.xy = limitVec(cohesionSum.xy, MAX_FORCE);  
+  }
+
+  //-------------- FLOCK BEHAVIOUR
+  float2 accel = sepSum.xy * REPEL_WEIGHT +        // Separation
+                 alignSum.xy * ALIGN_WEIGHT +      // Alignment
+                 cohesionSum.xy * COHESION_WEIGHT; // Cohesion
+  accel = limitVec(accel, MAX_FORCE);
+
+  //-------------- UPDATE VELOCITY
+  b.dir = b.dir + accel * DELTATIME * INVWEIGHT; // Apply Accel  
+  b.dir = limitVec(b.dir, MAX_SPEED); // Limit Speed
+  b.pos = b.pos + b.dir * DELTATIME;
+
+  /**/
+  //-------------- BORDER WRAP
+  b.pos.x = fmod(b.pos.x + BOUND, BOUND);
+  b.pos.y = fmod(b.pos.y + BOUND, BOUND);
+  
+  //-------------- OUTPUT RESULT
+  OutBoidBuffer.Append(b);
+}
