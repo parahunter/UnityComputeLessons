@@ -28,7 +28,7 @@ void CSRenderWipe(uint3 id : SV_DispatchThreadID) {
     0.1f - ceil(fmod(id.x, 32.0f)), 
     0.1f - ceil(fmod(id.y, 32.0f)), 0, 0);
 }
-
+	
 // Main Thread
 [numthreads(10, 1, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID) {
