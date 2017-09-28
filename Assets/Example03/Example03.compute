@@ -2,7 +2,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel BoidMain
 #pragma kernel GenerateMesh
-#pragma kernel RenderMain
+//#pragma kernel RenderMain
 #pragma kernel RenderBackground
 #include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
 
@@ -18,9 +18,9 @@ float4 Params;
 float4 Params2;
 float4 Params3;
 
-StructuredBuffer<Boid> BoidBuffer;
-ConsumeStructuredBuffer<uint> InBoidBuffer;
-AppendStructuredBuffer<Boid> OutBoidBuffer;
+RWStructuredBuffer<Boid> BoidBuffer;
+ConsumeStructuredBuffer<uint> ConsumeIndexBuffer;
+AppendStructuredBuffer<uint> AppendIndexBuffer;
 
 #define REPEL_WEIGHT     (Params.x)
 #define ALIGN_WEIGHT     (Params.y)
@@ -42,8 +42,9 @@ RWStructuredBuffer<float3> BoidMeshVert;
 RWStructuredBuffer<float4> BoidMeshCol;
 RWStructuredBuffer<int> BoidMeshIndexes;
 
-[numthreads(10, 1, 1)]
-void GenerateMesh(uint3 id : SV_DispatchThreadID) {
+[numthreads(32, 1, 1)]
+void GenerateMesh(uint3 id : SV_DispatchThreadID) 
+{
 	Boid b = BoidBuffer[id.x];
 	float3 worldPos = float3(b.pos.x / BOUND - 0.5f, b.pos.y / BOUND - 0.5f, 0);
 
@@ -83,12 +84,14 @@ void GenerateMesh(uint3 id : SV_DispatchThreadID) {
 float4 WipeColour;
 RWTexture2D<float4> Result;
 
-[numthreads(10, 1, 1)]
-void RenderMain(uint3 id : SV_DispatchThreadID) {
-	Boid b = BoidBuffer[id.x];
-
-	Result[b.pos.xy] = b.col;
-}
+//[numthreads(32, 1, 1)]
+//void RenderMain(uint3 id : SV_DispatchThreadID) {
+//
+//
+//	Boid b = BoidBuffer[id.x];
+//
+//	Result[b.pos.xy] = b.col;
+//}
 
 [numthreads(8, 8, 1)]
 void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThreadID) {
@@ -100,7 +103,6 @@ void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThread
 	}
 }
 
-//////////////////////////////////////////////
 // Helpers
 float2 limitVec(float2 v, float l) {
 	float al = length(v);
@@ -112,11 +114,10 @@ float2 limitVec(float2 v, float l) {
 
 float2 maxVec(float2 v, float l) { return v * l / length(v); }
 
-//////////////////////////////////////////////
-[numthreads(10, 1, 1)]
+[numthreads(32, 1, 1)]
 void BoidMain(uint3 id : SV_DispatchThreadID) {
 	// We don't need this consume buffer but you can see how you could have a list of ALIVE boids
-	uint bid = InBoidBuffer.Consume();
+	uint bid = ConsumeIndexBuffer.Consume();
 	Boid b = BoidBuffer[bid];
 
 	//-------------- COMPARE AGAINST OTHERS
@@ -181,12 +182,15 @@ void BoidMain(uint3 id : SV_DispatchThreadID) {
 	b.dir = b.dir + accel * DELTATIME * INVWEIGHT; // Apply Accel  
 	b.dir = limitVec(b.dir, MAX_SPEED); // Limit Speed
 	b.pos = b.pos + b.dir * DELTATIME;
-
-	/**/
+	
 	//-------------- BORDER WRAP
 	b.pos.x = fmod(b.pos.x + BOUND, BOUND);
 	b.pos.y = fmod(b.pos.y + BOUND, BOUND);
 
-	//-------------- OUTPUT RESULT
-	OutBoidBuffer.Append(b);
+	BoidBuffer[bid] = b;
+
+	Result[b.pos.xy] = b.col;
+
+	AppendIndexBuffer.Append(bid);
+	//OutBoidBuffer.Append(b);
 }
