@@ -1,9 +1,10 @@
 ﻿// NOT NONE OF THESE SHADERS ARE OPTIMAL THEY ARE SIMPLE!!!
 // Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel BoidMain
-#pragma kernel GenerateMesh
+#pragma kernel SimulateBoids
+#pragma kernel AddBoids
 //#pragma kernel RenderMain
 #pragma kernel RenderBackground
+#pragma kernel GenerateMesh
 #include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
 
 struct Boid
@@ -36,62 +37,9 @@ AppendStructuredBuffer<uint> AppendIndexBuffer;
 #define DELTATIME        (Params3.y)
 #define BOUND            (Params3.z)
 
-//////////////////////////////////////////////
-// MESH GENERATE
-RWStructuredBuffer<float3> BoidMeshVert;
-RWStructuredBuffer<float4> BoidMeshCol;
-RWStructuredBuffer<int> BoidMeshIndexes;
-
-[numthreads(32, 1, 1)]
-void GenerateMesh(uint3 id : SV_DispatchThreadID) 
-{
-	Boid b = BoidBuffer[id.x];
-	float3 worldPos = float3(b.pos.x / BOUND - 0.5f, b.pos.y / BOUND - 0.5f, 0);
-
-	float3 worldDir = float3(b.dir.x, b.dir.y, 0) * 0.002f;
-	float3 upDir = float3(0, 0, -1) * 0.01f;
-	float3 rightDir = normalize(cross(worldDir, float3(0, 0, 1))) * 0.01f;
-
-	// Vertex Position
-	BoidMeshVert[id.x * 4 + 0] = worldPos - worldDir;
-	BoidMeshVert[id.x * 4 + 1] = worldPos + upDir;
-	BoidMeshVert[id.x * 4 + 2] = worldPos - rightDir;
-	BoidMeshVert[id.x * 4 + 3] = worldPos + rightDir;
-
-	// Vertex Colour
-	BoidMeshCol[id.x * 4 + 0] = b.col.argb * 0.5f;
-	BoidMeshCol[id.x * 4 + 1] = b.col.argb;
-	BoidMeshCol[id.x * 4 + 2] = b.col.argb;
-	BoidMeshCol[id.x * 4 + 3] = b.col.argb;
-
-	// Indexes
-	BoidMeshIndexes[id.x * 12 + 0] = id.x * 4 + 0;
-	BoidMeshIndexes[id.x * 12 + 1] = id.x * 4 + 1;
-	BoidMeshIndexes[id.x * 12 + 2] = id.x * 4 + 3;
-	BoidMeshIndexes[id.x * 12 + 3] = id.x * 4 + 0;
-	BoidMeshIndexes[id.x * 12 + 4] = id.x * 4 + 1;
-	BoidMeshIndexes[id.x * 12 + 5] = id.x * 4 + 2;
-	BoidMeshIndexes[id.x * 12 + 6] = id.x * 4 + 0;
-	BoidMeshIndexes[id.x * 12 + 7] = id.x * 4 + 3;
-	BoidMeshIndexes[id.x * 12 + 8] = id.x * 4 + 2;
-	BoidMeshIndexes[id.x * 12 + 9] = id.x * 4 + 1;
-	BoidMeshIndexes[id.x * 12 + 10] = id.x * 4 + 3;
-	BoidMeshIndexes[id.x * 12 + 11] = id.x * 4 + 2;
-}
-
-//////////////////////////////////////////////
 // TEXTURE VERSION
 float4 WipeColour;
 RWTexture2D<float4> Result;
-
-//[numthreads(32, 1, 1)]
-//void RenderMain(uint3 id : SV_DispatchThreadID) {
-//
-//
-//	Boid b = BoidBuffer[id.x];
-//
-//	Result[b.pos.xy] = b.col;
-//}
 
 [numthreads(8, 8, 1)]
 void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThreadID) {
@@ -115,7 +63,11 @@ float2 limitVec(float2 v, float l) {
 float2 maxVec(float2 v, float l) { return v * l / length(v); }
 
 [numthreads(32, 1, 1)]
-void BoidMain(uint3 id : SV_DispatchThreadID) {
+void SimulateBoids(uint3 id : SV_DispatchThreadID) 
+{
+	if (id.x > NumBoids)
+		return;
+
 	// We don't need this consume buffer but you can see how you could have a list of ALIVE boids
 	uint bid = ConsumeIndexBuffer.Consume();
 	Boid b = BoidBuffer[bid];
@@ -192,5 +144,62 @@ void BoidMain(uint3 id : SV_DispatchThreadID) {
 	Result[b.pos.xy] = b.col;
 
 	AppendIndexBuffer.Append(bid);
-	//OutBoidBuffer.Append(b);
+}
+
+float4 SpawnPoint;
+
+[numthreads(1, 1, 1)]
+void AddBoids(uint3 id : SV_DispatchThreadID) 
+{
+	int index = ConsumeIndexBuffer.Consume();
+	
+	Boid b;
+	b.pos = SpawnPoint;
+	b.dir = float2(0, 0);
+	b.col = float4(1, 0, 0, 1);
+	
+	BoidBuffer[index] = b;
+	AppendIndexBuffer.Append(index);
+}
+
+// MESH GENERATE
+RWStructuredBuffer<float3> BoidMeshVert;
+RWStructuredBuffer<float4> BoidMeshCol;
+RWStructuredBuffer<int> BoidMeshIndexes;
+
+[numthreads(32, 1, 1)]
+void GenerateMesh(uint3 id : SV_DispatchThreadID)
+{
+	Boid b = BoidBuffer[id.x];
+	float3 worldPos = float3(b.pos.x / BOUND - 0.5f, b.pos.y / BOUND - 0.5f, 0);
+
+	float3 worldDir = float3(b.dir.x, b.dir.y, 0) * 0.002f;
+	float3 upDir = float3(0, 0, -1) * 0.01f;
+	float3 rightDir = normalize(cross(worldDir, float3(0, 0, 1))) * 0.01f;
+
+	// Vertex Position
+	BoidMeshVert[id.x * 4 + 0] = worldPos - worldDir;
+	BoidMeshVert[id.x * 4 + 1] = worldPos + upDir;
+	BoidMeshVert[id.x * 4 + 2] = worldPos - rightDir;
+	BoidMeshVert[id.x * 4 + 3] = worldPos + rightDir;
+
+	// Vertex Colour
+	BoidMeshCol[id.x * 4 + 0] = b.col.argb * 0.5f;
+	BoidMeshCol[id.x * 4 + 1] = b.col.argb;
+	BoidMeshCol[id.x * 4 + 2] = b.col.argb;
+	BoidMeshCol[id.x * 4 + 3] = b.col.argb;
+
+	// Indexes
+	BoidMeshIndexes[id.x * 12 + 0] = id.x * 4 + 0;
+	BoidMeshIndexes[id.x * 12 + 1] = id.x * 4 + 1;
+	BoidMeshIndexes[id.x * 12 + 2] = id.x * 4 + 3;
+	BoidMeshIndexes[id.x * 12 + 3] = id.x * 4 + 0;
+	BoidMeshIndexes[id.x * 12 + 4] = id.x * 4 + 1;
+	BoidMeshIndexes[id.x * 12 + 5] = id.x * 4 + 2;
+	BoidMeshIndexes[id.x * 12 + 6] = id.x * 4 + 0;
+	BoidMeshIndexes[id.x * 12 + 7] = id.x * 4 + 3;
+	BoidMeshIndexes[id.x * 12 + 8] = id.x * 4 + 2;
+	BoidMeshIndexes[id.x * 12 + 9] = id.x * 4 + 1;
+	BoidMeshIndexes[id.x * 12 + 10] = id.x * 4 + 3;
+	BoidMeshIndexes[id.x * 12 + 11] = id.x * 4 + 2;
 }
