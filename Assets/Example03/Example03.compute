@@ -43,21 +43,27 @@ float4 WipeColour;
 RWTexture2D<float4> Result;
 
 [numthreads(8, 8, 1)]
-void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThreadID) {
-	if ((gid.x == 0) || (gid.y == 0)) {
-		Result[id.xy] = float4(0.1, 0.1, 0.1, 1.0);
+void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThreadID)
+{
+	if ((gid.x == 0) || (gid.y == 0)) 
+	{
+		Result[id.xy] = float4(0.2, 0.2, 0.2, 1.0);
 	}
-	else {
+	else 
+	{
 		Result[id.xy] = WipeColour;
 	}
 }
 
 // Helpers
-float2 limitVec(float2 v, float l) {
+float2 limitVec(float2 v, float l)
+{
 	float al = length(v);
-	if (al > l) {
+	if (al > l) 
+	{
 		v = v * l / al;
 	}
+
 	return v;
 }
 
@@ -151,9 +157,8 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 	b.pos.x = fmod(b.pos.x + BOUND, BOUND);
 	b.pos.y = fmod(b.pos.y + BOUND, BOUND);
 
-	Result[b.pos] = b.col;
-
-	BoidBuffer[bid] = b;
+	Result[b.pos] = b.col; //Render out
+	BoidBuffer[bid] = b; //Assign updated boid back
 }
 
 float4 SpawnPoint;

@@ -133,16 +133,13 @@ public class Example03 : MonoBehaviour
 		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
 		countBuffer.GetData(values);
 		int currentBoidCount = values[0];
-		print(currentBoidCount);
-
+		
 		shader.SetInt("NumBoids", currentBoidCount);
 		
 		// Do Boid Pass
 		kernelHandle = shader.FindKernel("SimulateBoids");
 		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
 		shader.SetBuffer(kernelHandle, "IndexBuffer", indexBuffer0);
-		//shader.SetBuffer(kernelHandle, "ConsumeIndexBuffer", consumeBuffer);
-		//shader.SetBuffer(kernelHandle, "AppendIndexBuffer", appendBuffer);
 		shader.SetTexture(kernelHandle, "Result", renderTexture);
 		shader.Dispatch(kernelHandle, 1 + ((boidMaxCount - 32) / 32), 1, 1);
 
@@ -167,9 +164,7 @@ public class Example03 : MonoBehaviour
 				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", indexBuffer0);
 				shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
 
-				Vector2 texCoord = hit.textureCoord;
-				texCoord.y = 1 - texCoord.y;
-				texCoord.x = 1 - texCoord.x;
+				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
 				Vector4 spawnPoint = texCoord * TexResolution;
 				shader.SetVector("SpawnPoint", spawnPoint);
 
