@@ -22,6 +22,7 @@ float4 Params3;
 RWStructuredBuffer<Boid> BoidBuffer;
 ConsumeStructuredBuffer<uint> ConsumeIndexBuffer;
 AppendStructuredBuffer<uint> AppendIndexBuffer;
+StructuredBuffer<uint> IndexBuffer;
 
 #define REPEL_WEIGHT     (Params.x)
 #define ALIGN_WEIGHT     (Params.y)
@@ -65,11 +66,10 @@ float2 maxVec(float2 v, float l) { return v * l / length(v); }
 [numthreads(32, 1, 1)]
 void SimulateBoids(uint3 id : SV_DispatchThreadID) 
 {
-	if (id.x > NumBoids)
+	if (id.x >= NumBoids)
 		return;
 
-	// We don't need this consume buffer but you can see how you could have a list of ALIVE boids
-	uint bid = ConsumeIndexBuffer.Consume();
+	uint bid = IndexBuffer[id.x];
 	Boid b = BoidBuffer[bid];
 
 	//-------------- COMPARE AGAINST OTHERS
@@ -78,45 +78,56 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 	float3 cohesionSum = float3(0, 0, 0);
 
 	// For every boid in the system, check if it's too close
-	for (int i = NumBoids - 1; i >= 0; --i) {
-		if ((int)bid == i)
+	for (int i = 0; i < NumBoids; i++)
+	{
+		uint otherBid = IndexBuffer[i];
+		
+		if (otherBid == bid)
 			continue;
 
+		Boid otherBoid = BoidBuffer[otherBid];
+
 		// Distance
-		float2 lDiff = b.pos - BoidBuffer[i].pos;
+		float2 lDiff = b.pos - otherBoid.pos;
 		float d = length(lDiff);
 
 		// Repel
-		if (d < REPEL_DIST) {
+		if (d < REPEL_DIST) 
+		{
 			sepSum.xy = sepSum.xy + (lDiff * (REPEL_DIST / (d * d)));
 			sepSum.z += 1.0f;
 		}
 
 		// Align
-		if (d < ALIGN_DIST) {
-			alignSum.xy = alignSum.xy + BoidBuffer[i].dir;
+		if (d < ALIGN_DIST) 
+		{
+			alignSum.xy = alignSum.xy + otherBoid.dir;
 			alignSum.z += 1.0f;
 		}
 
 		// Cohesion
-		if (d < COHESION_DIST) {
-			cohesionSum.xy = cohesionSum.xy + BoidBuffer[i].pos;
+		if (d < COHESION_DIST) 
+		{
+			cohesionSum.xy = cohesionSum.xy + otherBoid.pos;
 			cohesionSum.z += 1.0f;
 		}
 	}
 
 	// Implement Reynolds: Steering = Desired - Velocity
-	if (sepSum.z > 0.0f) {
+	if (sepSum.z > 0.0f) 
+	{
 		sepSum.xy = (sepSum.xy / length(sepSum.xy) * MAX_SPEED) - b.dir;
 		sepSum.xy = limitVec(sepSum.xy, MAX_FORCE);
 	}
 
-	if (alignSum.z > 0.0f) {
+	if (alignSum.z > 0.0f) 
+	{
 		alignSum.xy = (alignSum.xy / length(alignSum.xy) * MAX_SPEED) - b.dir;
 		alignSum.xy = limitVec(alignSum.xy, MAX_FORCE);
 	}
 
-	if (cohesionSum.z > 0.0f) {
+	if (cohesionSum.z > 0.0f)
+	{
 		cohesionSum.xy = cohesionSum.xy / cohesionSum.z; // Average Position
 
 		cohesionSum.xy = cohesionSum.xy - b.pos;
@@ -126,8 +137,9 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 
 	//-------------- FLOCK BEHAVIOUR
 	float2 accel = sepSum.xy * REPEL_WEIGHT +        // Separation
-		alignSum.xy * ALIGN_WEIGHT +      // Alignment
-		cohesionSum.xy * COHESION_WEIGHT; // Cohesion
+				   alignSum.xy * ALIGN_WEIGHT +      // Alignment
+				   cohesionSum.xy * COHESION_WEIGHT; // Cohesion
+	
 	accel = limitVec(accel, MAX_FORCE);
 
 	//-------------- UPDATE VELOCITY
@@ -139,14 +151,14 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 	b.pos.x = fmod(b.pos.x + BOUND, BOUND);
 	b.pos.y = fmod(b.pos.y + BOUND, BOUND);
 
+	Result[b.pos] = b.col;
+
 	BoidBuffer[bid] = b;
-
-	Result[b.pos.xy] = b.col;
-
-	AppendIndexBuffer.Append(bid);
 }
 
 float4 SpawnPoint;
+float4 SpawnDirection;
+float4 SpawnColor;
 
 [numthreads(1, 1, 1)]
 void AddBoids(uint3 id : SV_DispatchThreadID) 
@@ -155,8 +167,8 @@ void AddBoids(uint3 id : SV_DispatchThreadID)
 	
 	Boid b;
 	b.pos = SpawnPoint;
-	b.dir = float2(0, 0);
-	b.col = float4(1, 0, 0, 1);
+	b.dir = SpawnDirection;
+	b.col = SpawnColor;
 	
 	BoidBuffer[index] = b;
 	AppendIndexBuffer.Append(index);

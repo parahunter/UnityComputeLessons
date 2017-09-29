@@ -99,16 +99,18 @@ public class Example03 : MonoBehaviour
 		boidBuffer.SetData(boidArray);
 
 		uint[] ConsumeIds = new uint[boidMaxCount];
-		for (uint i = 0; i < boidStartCount; i++)
+		for (uint i = 0; i < boidMaxCount; i++)
 			ConsumeIds[i] = i;
 
-		indexBuffer0.SetData(ConsumeIds);
-		indexBuffer0.SetCounterValue((uint)boidStartCount);
 
+		//indexBuffer0.SetData(ConsumeIds);
+		indexBuffer0.SetCounterValue(0);
+		indexBuffer1.SetCounterValue(0);
+
+		
 		deadIndexBuffer.SetData(ConsumeIds);
 		deadIndexBuffer.SetCounterValue((uint)(boidMaxCount));
 
-		indexBuffer1.SetCounterValue(0);
 
 		useFirstBuffer = true;
 
@@ -118,10 +120,9 @@ public class Example03 : MonoBehaviour
 	private void ComputeStepFrame()
 	{
 		SetShaderValues();
-
-		//inBuf.SetData(ConsumeIds);
-		ComputeBuffer consumeBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
-		ComputeBuffer appendBuffer  = !useFirstBuffer ? indexBuffer0 : indexBuffer1;
+		
+		//ComputeBuffer consumeBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
+		//ComputeBuffer appendBuffer  = !useFirstBuffer ? indexBuffer0 : indexBuffer1;
 		
 		// Clear Texture
 		int kernelHandle = shader.FindKernel("RenderBackground");
@@ -129,7 +130,7 @@ public class Example03 : MonoBehaviour
 		shader.Dispatch(kernelHandle, TexResolution / 8, TexResolution / 8, 1);
 		
 		int[] values = new int[4];
-		ComputeBuffer.CopyCount(consumeBuffer, countBuffer, 0);
+		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
 		countBuffer.GetData(values);
 		int currentBoidCount = values[0];
 		print(currentBoidCount);
@@ -139,10 +140,11 @@ public class Example03 : MonoBehaviour
 		// Do Boid Pass
 		kernelHandle = shader.FindKernel("SimulateBoids");
 		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
-		shader.SetBuffer(kernelHandle, "ConsumeIndexBuffer", consumeBuffer);
-		shader.SetBuffer(kernelHandle, "AppendIndexBuffer", appendBuffer);
+		shader.SetBuffer(kernelHandle, "IndexBuffer", indexBuffer0);
+		//shader.SetBuffer(kernelHandle, "ConsumeIndexBuffer", consumeBuffer);
+		//shader.SetBuffer(kernelHandle, "AppendIndexBuffer", appendBuffer);
 		shader.SetTexture(kernelHandle, "Result", renderTexture);
-		shader.Dispatch(kernelHandle, boidMaxCount / 32, 1, 1);
+		shader.Dispatch(kernelHandle, 1 + ((boidMaxCount - 32) / 32), 1, 1);
 
 		// Set Material
 		renderer.material.SetTexture("_MainTex", renderTexture);
@@ -160,15 +162,23 @@ public class Example03 : MonoBehaviour
 			if (Physics.Raycast(mr, out hit))
 			{
 				int kernelIndex = shader.FindKernel("AddBoids");
-				Vector4 spawnPoint = hit.textureCoord * TexResolution;
-
-				ComputeBuffer appendBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
-
-				print("spawn point " + spawnPoint);
-
-				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", appendBuffer);
+				
 				shader.SetBuffer(kernelIndex, "ConsumeIndexBuffer", deadIndexBuffer);
-				shader.SetVector("AddPoint", spawnPoint);
+				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", indexBuffer0);
+				shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
+
+				Vector2 texCoord = hit.textureCoord;
+				texCoord.y = 1 - texCoord.y;
+				texCoord.x = 1 - texCoord.x;
+				Vector4 spawnPoint = texCoord * TexResolution;
+				shader.SetVector("SpawnPoint", spawnPoint);
+
+				Vector4 spawnDirection = Random.insideUnitCircle;
+				shader.SetVector("SpawnDirection", spawnDirection);
+
+				Vector4 spawnColor = new Vector4(Random.value, Random.value, Random.value, 1.0f);
+				shader.SetVector("SpawnColor", spawnColor);
+
 				shader.Dispatch(kernelIndex, 1, 1, 1);
 			}
 		}
