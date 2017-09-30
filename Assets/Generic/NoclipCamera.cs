@@ -13,7 +13,7 @@ public class NoclipCamera : MonoBehaviour
 		Vector2 moveInput = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
 		Vector2 rotationInput = new Vector2(Input.GetAxis("Mouse X"), -Input.GetAxis("Mouse Y"));
 
-		Vector3 moveDelta = transform.forward * moveInput.y + transform.right * moveInput.x;
+		Vector3 moveDelta = Vector3.forward * moveInput.y + Vector3.right * moveInput.x;
 		moveDelta *= moveSpeed * Time.deltaTime;
 		transform.Translate(moveDelta);
 
