@@ -5,8 +5,6 @@
 #pragma kernel CSHiRes_OnlyRes
 #pragma kernel CSHiRes_ResCol
 
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
-
 // Textures
 RWTexture2D<float4> Result;
 
@@ -43,7 +41,6 @@ static float3 colours[COL_COUNT] = {
 	float3(1.00, 1.00, 1.00)   // White
 };
 
-
 // C64 - HiRes 40x25 blocks of 8x8 cells with 2 colours 
 #define BLOCK_W 40
 #define BLOCK_H 25
@@ -55,13 +52,16 @@ groupshared uint ColTotals[COL_COUNT];
 
 float Epsilon = 1e-10;
 
-int ConvColour(float3 sourceCol) {
+int ConvColour(float3 sourceCol) 
+{
 	// Convert to C64 Colour
 	float minDist = 10000000.0;
 	int cMin = 0;
-	for (uint i = 0; i < COL_COUNT; i++) {
+	for (uint i = 0; i < COL_COUNT; i++) 
+	{
 		float d = length(sourceCol.rgb - colours[i]);
-		if (d < minDist) {
+		if (d < minDist) 
+		{
 			cMin = i;
 			minDist = d;
 		}
@@ -75,9 +75,9 @@ int ConvColour(float3 sourceCol) {
 // SV_GroupID your group will not be above NumGroupX,NumGroupY,1 
 // SV_GroupIndex = SV_GroupThreadID.z*dimx*dimy + SV_GroupThreadID.y*dimx + SV_GroupThreadID.x
 [numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID) {
-	float2 texCoord =
-		float2(id.x / float(CELL_W * BLOCK_W), id.y / float(CELL_H * BLOCK_H));
+void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID) 
+{
+	float2 texCoord = float2(id.x / float(CELL_W * BLOCK_W), id.y / float(CELL_H * BLOCK_H));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 
 	// Convert to C64 Colour
@@ -89,33 +89,41 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 
 	// Each thread can count a single colour
 	// Note :: note the best method but simple
-	if (gindex < COL_COUNT) {
+	if (gindex < COL_COUNT) 
+	{
 		uint x, y;
 		ColTotals[gindex] = 0;
 		for (x = 0; x < CELL_W; x++)
+		{
 			for (y = 0; y < CELL_H; y++)
-				if (HiResColCount[x][y] == gindex) {
+			{
+				if (HiResColCount[x][y] == gindex)
 					ColTotals[gindex] += 1;
-				}
+			}
+		}
 	}
 
-	//
+	
 	GroupMemoryBarrierWithGroupSync();
 	Result[id.xy] = float4(0, 0, 0, 0);
 
 	// Single thread operation to find two biggest
-	if (gindex == 0) {
+	if (gindex == 0) 
+	{
 		uint g;
 		uint2 aCol = uint2(0, ColTotals[0]);
 		uint2 bCol = uint2(20, 0);
 
-		for (g = 1; g < COL_COUNT; g++) {
+		for (g = 1; g < COL_COUNT; g++) 
+		{
 			uint t = ColTotals[g];
-			if (aCol.y < t) {
+			if (aCol.y < t) 
+			{
 				bCol = aCol;
 				aCol = uint2(g, t);
 			}
-			else if (bCol.y < t) {
+			else if (bCol.y < t) 
+			{
 				bCol = uint2(g, t);
 			}
 		}
@@ -129,6 +137,7 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 		Result[id.xy + uint2(3, 0)] = float4(bCol.y/64.0, bCol.y/64.0, bCol.y/64.0, 1);
 		*/
 	}
+
 	GroupMemoryBarrierWithGroupSync();
 
 	/* DEBUG
@@ -144,17 +153,19 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 	*/
 
 	// Def made the cut
-	if ((c == ColTotals[0]) || (c == ColTotals[1])) {
+	if ((c == ColTotals[0]) || (c == ColTotals[1])) 
+	{
 		Result[id.xy] = float4(colours[c], 1);
 		return;
 	}
 
 	// Which are we closer to
-	if (length(res.rgb - colours[ColTotals[0]]) <
-		length(res.rgb - colours[ColTotals[1]])) {
+	if (length(res.rgb - colours[ColTotals[0]]) < length(res.rgb - colours[ColTotals[1]])) 
+	{
 		res.rgb = colours[ColTotals[0]];
 	}
-	else {
+	else 
+	{
 		res.rgb = colours[ColTotals[1]];
 	}
 
@@ -163,14 +174,16 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 
 // DEBUG :: Only Res
 [numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex) {
+void CSHiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex) 
+{
 	float2 texCoord = float2(id.x / float(CELL_W*BLOCK_W), id.y / float(CELL_H*BLOCK_H));
 	Result[id.xy] = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 }
 
 // DEBUG :: Res & Colour
 [numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID) {
+void CSHiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID) 
+{
 	float2 texCoord = float2(id.x / float(CELL_W*BLOCK_W), id.y / float(CELL_H*BLOCK_H));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 
@@ -178,8 +191,9 @@ void CSHiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex,
 	int c = ConvColour(res.rgb);
 	res.rgb = colours[c];
 
-	// DEBUG Show CELL Borders
-	if ((gid.x == 0) || (gid.y == 0)) {
+	//// DEBUG Show CE'LL Borders
+	if ((gid.x == 0) || (gid.y == 0)) 
+	{
 		res.xyz = res.xyz * 0.9 + float3(0.1, 0, 0.1);
 	}
 
