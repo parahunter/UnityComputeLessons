@@ -4,13 +4,19 @@ using UnityEngine;
 
 public class Exercise01 : MonoBehaviour
 {
+	[Range(0, 1f)]
+	[SerializeField] float intensity = 1;
 	[SerializeField] ComputeShader computeShader;
 
 	RenderTexture texture;
 
-	const int textureSize = 512;
-	const int kernelSize = 8;
+	const int textureSize = 1024;
+	const int kernelSize = 4;
 
+	int kernelIndex;
+
+	const int blockSize = 2;
+	
 	// Use this for initialization
 	void Start()
 	{
@@ -19,13 +25,16 @@ public class Exercise01 : MonoBehaviour
 		texture.filterMode = FilterMode.Point;
 		texture.Create();
 
-		int kernelIndex = computeShader.FindKernel("CSMain");
-
+		kernelIndex = computeShader.FindKernel("CSMain");
 		computeShader.SetTexture(kernelIndex: kernelIndex, name: "Result", texture: texture);
-
-		computeShader.Dispatch(kernelIndex, textureSize / kernelSize, textureSize / kernelSize, 1);
-
+		
 		GetComponent<Renderer>().material.mainTexture = texture;
+	}
+
+	void Update()
+	{
+		computeShader.SetFloat("intensity", intensity);
+		computeShader.Dispatch(kernelIndex, textureSize / (kernelSize * blockSize), textureSize / (kernelSize * blockSize), 1);
 	}
 
 	void OnDisable()
