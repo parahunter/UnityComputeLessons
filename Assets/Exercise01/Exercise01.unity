@@ -295,6 +295,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   intensity: 1
   computeShader: {fileID: 7200000, guid: 711e0500a97c58b4bbf8e4246aae6af4, type: 3}
+  cirleRadius: 400
+  circleCenterX: 200
+  circleCenterY: 800
 --- !u!1 &1719661883
 GameObject:
   m_ObjectHideFlags: 0

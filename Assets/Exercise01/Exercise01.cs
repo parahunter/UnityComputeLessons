@@ -8,6 +8,11 @@ public class Exercise01 : MonoBehaviour
 	[SerializeField] float intensity = 1;
 	[SerializeField] ComputeShader computeShader;
 
+	[SerializeField] float cirleRadius = 200;
+	[SerializeField] float circleCenterX = 512;
+	[SerializeField] float circleCenterY = 512;
+
+
 	RenderTexture texture;
 
 	const int textureSize = 1024;
@@ -34,6 +39,10 @@ public class Exercise01 : MonoBehaviour
 	void Update()
 	{
 		computeShader.SetFloat("intensity", intensity);
+		computeShader.SetFloat("cirleRadius", cirleRadius);
+		computeShader.SetFloat("circleCenterX", circleCenterX);
+		computeShader.SetFloat("circleCenterY", circleCenterY);
+		
 		computeShader.Dispatch(kernelIndex, textureSize / (kernelSize * blockSize), textureSize / (kernelSize * blockSize), 1);
 	}
 
