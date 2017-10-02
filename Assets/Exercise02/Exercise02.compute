@@ -25,12 +25,17 @@ struct Particle
 
 RWStructuredBuffer<Particle> PartBuffer;
 
+#define GRID_SIZE 32
+ 
 // Draw Grid
 [numthreads(8, 8, 1)]
 void RenderBackground(uint3 id : SV_DispatchThreadID)
 {
-	Result[id.xy] = float4(0, 0, 0, 0);
-}
+	float r = id.x % GRID_SIZE == 0 ? 0.1 : 0;
+	float g = id.y % GRID_SIZE == 0 ? 0.1 : 0;
+
+	Result[id.xy] = float4(r, g, 0, 0);
+} 
 
 // Main Thread
 [numthreads(256, 1, 1)]
