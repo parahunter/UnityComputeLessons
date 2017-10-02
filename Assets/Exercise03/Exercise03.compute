@@ -5,7 +5,8 @@
 //#pragma kernel RenderMain
 #pragma kernel RenderBackground
 #pragma kernel GenerateMesh
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
+
+#define TWO_PI 6.28318530718
 
 struct Boid
 {
@@ -52,7 +53,7 @@ void RenderBackground(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupThread
 float2 limitVec(float2 v, float l)
 {
 	float al = length(v);
-	if (al > l) 
+	if (al > l)
 	{
 		v = v * l / al;
 	}
@@ -63,7 +64,7 @@ float2 limitVec(float2 v, float l)
 float2 maxVec(float2 v, float l) { return v * l / length(v); }
 
 [numthreads(32, 1, 1)]
-void SimulateBoids(uint3 id : SV_DispatchThreadID) 
+void SimulateBoids(uint3 id : SV_DispatchThreadID)
 {
 	if (id.x >= NumBoids)
 		return;
@@ -80,7 +81,7 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 	for (int i = 0; i < NumBoids; i++)
 	{
 		uint otherBid = IndexBuffer[i];
-		
+
 		if (otherBid == bid)
 			continue;
 
@@ -91,21 +92,21 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 		float d = length(lDiff);
 
 		// Repel
-		if (d < REPEL_DIST) 
+		if (d < REPEL_DIST)
 		{
 			sepSum.xy = sepSum.xy + (lDiff * (REPEL_DIST / (d * d)));
 			sepSum.z += 1.0f;
 		}
 
 		// Align
-		if (d < ALIGN_DIST) 
+		if (d < ALIGN_DIST)
 		{
 			alignSum.xy = alignSum.xy + otherBoid.dir;
 			alignSum.z += 1.0f;
 		}
 
 		// Cohesion
-		if (d < COHESION_DIST) 
+		if (d < COHESION_DIST)
 		{
 			cohesionSum.xy = cohesionSum.xy + otherBoid.pos;
 			cohesionSum.z += 1.0f;
@@ -113,13 +114,13 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 	}
 
 	// Implement Reynolds: Steering = Desired - Velocity
-	if (sepSum.z > 0.0f) 
+	if (sepSum.z > 0.0f)
 	{
 		sepSum.xy = (sepSum.xy / length(sepSum.xy) * MAX_SPEED) - b.dir;
 		sepSum.xy = limitVec(sepSum.xy, MAX_FORCE);
 	}
 
-	if (alignSum.z > 0.0f) 
+	if (alignSum.z > 0.0f)
 	{
 		alignSum.xy = (alignSum.xy / length(alignSum.xy) * MAX_SPEED) - b.dir;
 		alignSum.xy = limitVec(alignSum.xy, MAX_FORCE);
@@ -136,16 +137,16 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 
 	//-------------- FLOCK BEHAVIOUR
 	float2 accel = sepSum.xy * REPEL_WEIGHT +        // Separation
-				   alignSum.xy * ALIGN_WEIGHT +      // Alignment
-				   cohesionSum.xy * COHESION_WEIGHT; // Cohesion
-	
+		alignSum.xy * ALIGN_WEIGHT +      // Alignment
+		cohesionSum.xy * COHESION_WEIGHT; // Cohesion
+
 	accel = limitVec(accel, MAX_FORCE);
 
 	//-------------- UPDATE VELOCITY
 	b.dir = b.dir + accel * DELTATIME * INVWEIGHT; // Apply Accel  
 	b.dir = limitVec(b.dir, MAX_SPEED); // Limit Speed
 	b.pos = b.pos + b.dir * DELTATIME;
-	
+
 	//-------------- BORDER WRAP
 	b.pos.x = fmod(b.pos.x + BOUND, BOUND);
 	b.pos.y = fmod(b.pos.y + BOUND, BOUND);
@@ -157,17 +158,21 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 float4 SpawnPoint;
 float4 SpawnDirection;
 float4 SpawnColor;
-
-[numthreads(1, 1, 1)]
-void AddBoids(uint3 id : SV_DispatchThreadID) 
+float SpawnCircleRadius;
+  
+[numthreads(32, 1, 1)]
+void AddBoids(uint3 id : SV_DispatchThreadID)
 {
 	int index = ConsumeIndexBuffer.Consume();
-	
+	 
+	float radians = id.x * (TWO_PI / 32.0);
+	float2 offset = float2(cos(radians), sin(radians));
+
 	Boid b;
-	b.pos = SpawnPoint;
-	b.dir = SpawnDirection;
+	b.pos = SpawnPoint + offset * SpawnCircleRadius;
+	b.dir = offset;
 	b.col = SpawnColor;
-	
+	 
 	BoidBuffer[index] = b;
 	AppendIndexBuffer.Append(index);
 }
@@ -177,7 +182,7 @@ RWStructuredBuffer<float3> BoidMeshVert;
 RWStructuredBuffer<float4> BoidMeshCol;
 RWStructuredBuffer<int> BoidMeshIndexes;
 
-[numthreads(32, 1, 1)]
+[numthreads(16, 1, 1)]
 void GenerateMesh(uint3 id : SV_DispatchThreadID)
 {
 	Boid b = BoidBuffer[id.x];
