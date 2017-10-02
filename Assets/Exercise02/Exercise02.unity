@@ -294,10 +294,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: b4eef899588e0ee43adcb7c944f410a2, type: 3}
-  textureResolution: 256
+  textureResolution: 128
   particleAmount: 200
   attractionRadius: 50
-  attractionForce: 100
+  attractionForce: 5
+  opacityModifier: 0.1
 --- !u!1 &1719661883
 GameObject:
   m_ObjectHideFlags: 0

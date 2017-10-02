@@ -9,6 +9,7 @@ public class Exercise02 : MonoBehaviour
 	public int particleAmount = 200;
 	public float attractionRadius = 50;
 	public float attractionForce = 100;
+	public float opacityModifier = 0.1f;
 
 	Vector4 attractionPoint;
 	
@@ -79,7 +80,8 @@ public class Exercise02 : MonoBehaviour
 		computeShader.SetInt("TexSize", textureResolution - 1);
 		computeShader.SetFloat("DeltaTime", Time.deltaTime);
 		computeShader.SetVector("AttractionPoint", attractionPoint);
-
+		computeShader.SetFloat("OpacityModifier", opacityModifier);
+		
 		int kernelHandle = computeShader.FindKernel("RenderBackground");
 		computeShader.SetTexture(kernelHandle, "Result", renderTexture);
 		computeShader.Dispatch(kernelHandle, textureResolution / 8, textureResolution / 8, 1);

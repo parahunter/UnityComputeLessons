@@ -8,6 +8,7 @@ int TexSize;
 int RandOffset;
 float DeltaTime;
 float4 AttractionPoint;
+float OpacityModifier;
 
 RWTexture2D<float4> Result;
 
@@ -65,7 +66,8 @@ void SimulateParticles(uint3 id : SV_DispatchThreadID)
 		p.direction.y = p.direction.y * -bounceForceDamping;
 	}
 
+	float alpha = saturate(length(p.direction) * OpacityModifier);
 	// Render & Save
-	Result[p.position] = float4(p.color.rgb, 1.0);
+	Result[p.position] = p.color * alpha;
 	PartBuffer[id.x] = p;
 }

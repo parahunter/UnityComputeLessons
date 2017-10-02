@@ -11,8 +11,6 @@ float4 AttractionPoint;
 
 RWTexture2D<float4> Result;
 
-#define bounceForceDamping 0.1
-
 //const float bounceForceDamping = 0.8;
 
 struct Particle
@@ -49,20 +47,20 @@ void SimulateParticles(uint3 id : SV_DispatchThreadID)
 	// Hit Border
 	if (p.position.x < 0.0f) {
 		p.position.x = 0 - p.position.x;
-		p.direction.x = p.direction.x * -bounceForceDamping;
+		p.direction.x = -p.direction.x;
 	}
 	else if (p.position.x > TexSize) {
 		p.position.x = TexSize*2.0 - p.position.x;
-		p.direction.x = p.direction.x * -bounceForceDamping;
+		p.direction.x = -p.direction.x;
 	}
 
 	if (p.position.y < 0.0f) {
 		p.position.y = 0 - p.position.y;
-		p.direction.y = p.direction.y * -bounceForceDamping;
+		p.direction.y = -p.direction.y;
 	}
 	else if (p.position.y > TexSize) {
 		p.position.y = TexSize * 2.0 - p.position.y;
-		p.direction.y = p.direction.y * -bounceForceDamping;
+		p.direction.y = -p.direction.y;
 	}
 
 	// Render & Save
