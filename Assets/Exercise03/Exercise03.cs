@@ -21,7 +21,13 @@ public class Exercise03 : MonoBehaviour
 	public float cohesionDist = 50;
 	public float maxForce = 10;
 
+	[Header("Adding")]
 	public float spawnCircleRadius = 10;
+
+	[Header("Removing")]
+	public float removeRadius = 10;
+
+
 
 	new Renderer renderer;
 	RenderTexture renderTexture;
@@ -104,13 +110,11 @@ public class Exercise03 : MonoBehaviour
 		uint[] ConsumeIds = new uint[boidMaxCount];
 		for (uint i = 0; i < boidMaxCount; i++)
 			ConsumeIds[i] = i;
-
-
+		
 		//indexBuffer0.SetData(ConsumeIds);
 		indexBuffer0.SetCounterValue(0);
 		indexBuffer1.SetCounterValue(0);
-
-
+		
 		deadIndexBuffer.SetData(ConsumeIds);
 		deadIndexBuffer.SetCounterValue((uint)(boidMaxCount));
 
@@ -128,43 +132,47 @@ public class Exercise03 : MonoBehaviour
 		//ComputeBuffer appendBuffer  = !useFirstBuffer ? indexBuffer0 : indexBuffer1;
 
 		// Clear Texture
-		int kernelHandle = shader.FindKernel("RenderBackground");
-		shader.SetTexture(kernelHandle, "Result", renderTexture);
-		shader.Dispatch(kernelHandle, TexResolution / 8, TexResolution / 8, 1);
+		int kernelIndex = shader.FindKernel("RenderBackground");
+		shader.SetTexture(kernelIndex, "Result", renderTexture);
+		shader.Dispatch(kernelIndex, TexResolution / 8, TexResolution / 8, 1);
+
+		ComputeBuffer currentIndexBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
 
 		int[] values = new int[4];
-		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
+		ComputeBuffer.CopyCount(currentIndexBuffer, countBuffer, 0);
 		countBuffer.GetData(values);
 		int currentBoidCount = values[0];
 
 		shader.SetInt("NumBoids", currentBoidCount);
 
 		// Do Boid Pass
-		kernelHandle = shader.FindKernel("SimulateBoids");
-		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
-		shader.SetBuffer(kernelHandle, "IndexBuffer", indexBuffer0);
-		shader.SetTexture(kernelHandle, "Result", renderTexture);
-		shader.Dispatch(kernelHandle, 1 + ((boidMaxCount - 32) / 32), 1, 1);
+		kernelIndex = shader.FindKernel("SimulateBoids");
+		shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
+		shader.SetBuffer(kernelIndex, "IndexBuffer", indexBuffer0);
+		shader.SetTexture(kernelIndex, "Result", renderTexture);
+		shader.Dispatch(kernelIndex, 1 + ((currentBoidCount - 32) / 32), 1, 1);
 
 		// Set Material
 		renderer.material.SetTexture("_MainTex", renderTexture);
 
-		useFirstBuffer = !useFirstBuffer;
+		//useFirstBuffer = !useFirstBuffer;
 	}
 
 	void Update()
 	{
-		if (Input.GetMouseButtonDown(0))
+		RaycastHit hit;
+		Ray mr = Camera.main.ScreenPointToRay(Input.mousePosition);
+		
+		if (Physics.Raycast(mr, out hit))
 		{
-			RaycastHit hit;
-			Ray mr = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-			if (Physics.Raycast(mr, out hit))
+			if (Input.GetMouseButtonDown(0))
 			{
 				int kernelIndex = shader.FindKernel("AddBoids");
+
+				ComputeBuffer currentIndexBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
 				
 				shader.SetBuffer(kernelIndex, "ConsumeIndexBuffer", deadIndexBuffer);
-				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", indexBuffer0);
+				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", currentIndexBuffer);
 				shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
 
 				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
@@ -179,6 +187,37 @@ public class Exercise03 : MonoBehaviour
 				shader.SetFloat("SpawnCircleRadius", spawnCircleRadius);
 
 				shader.Dispatch(kernelIndex, 1, 1, 1);
+			}
+
+			if (Input.GetMouseButtonDown(1))
+			{
+				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
+				Vector4 removePoint = texCoord * TexResolution;
+				shader.SetVector("RemovePoint", removePoint);
+
+				int kernelHandle = shader.FindKernel("RemoveBoids");
+				ComputeBuffer currentIndexBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
+				ComputeBuffer nextIndexBuffer = useFirstBuffer ? indexBuffer1 : indexBuffer0;
+				nextIndexBuffer.SetCounterValue(0);
+
+				int[] values = new int[4];
+				ComputeBuffer.CopyCount(currentIndexBuffer, countBuffer, 0);
+				countBuffer.GetData(values);
+				int currentBoidCount = values[0];
+				shader.SetInt("NumBoids", currentBoidCount);
+				
+				shader.SetFloat("RemoveRadius", removeRadius);
+				shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
+				shader.SetBuffer(kernelHandle, "IndexBuffer", currentIndexBuffer);
+				shader.SetBuffer(kernelHandle, "AppendIndexBuffer", nextIndexBuffer);
+				
+				shader.Dispatch(kernelHandle, 1 + ((currentBoidCount - 32) / 32), 1, 1);
+				print("how many thread groups? " + (1 + ((currentBoidCount - 32) / 32)));
+
+				useFirstBuffer = !useFirstBuffer;
+
+				print("Removing. Use first? " + useFirstBuffer + " boid count " + currentBoidCount);
+
 			}
 		}
 

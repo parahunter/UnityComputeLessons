@@ -2,6 +2,7 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel SimulateBoids
 #pragma kernel AddBoids
+#pragma kernel RemoveBoids
 //#pragma kernel RenderMain
 #pragma kernel RenderBackground
 #pragma kernel GenerateMesh
@@ -153,6 +154,22 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
 
 	Result[b.pos] = b.col; //Render out
 	BoidBuffer[bid] = b; //Assign updated boid back
+}
+
+float4 RemovePoint;
+float RemoveRadius;
+
+[numthreads(32, 1, 1)]
+void RemoveBoids(uint3 id : SV_DispatchThreadID)
+{
+	if (id.x >= NumBoids)
+		return;
+	
+	uint bid = IndexBuffer[id.x];
+	Boid b = BoidBuffer[bid];
+
+	if (length(b.pos - RemovePoint.xy) > RemoveRadius)
+		AppendIndexBuffer.Append(bid);
 }
 
 float4 SpawnPoint;

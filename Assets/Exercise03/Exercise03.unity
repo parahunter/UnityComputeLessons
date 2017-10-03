@@ -253,7 +253,7 @@ MonoBehaviour:
   TexResolution: 256
   boidMaxCount: 4096
   boidStartCount: 0
-  deltaModifier: 1
+  deltaModifier: 0
   weight: 10
   separationWeight: 600
   alignWeight: 200
@@ -264,6 +264,7 @@ MonoBehaviour:
   cohesionDist: 50
   maxForce: 10
   spawnCircleRadius: 20
+  removeRadius: 30
 --- !u!33 &645041526
 MeshFilter:
   m_ObjectHideFlags: 0
