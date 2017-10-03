@@ -177,12 +177,13 @@ public class Exercise03 : MonoBehaviour
 
 				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
 				Vector4 spawnPoint = texCoord * TexResolution;
+				print("Spawn point " + spawnPoint);
 				shader.SetVector("SpawnPoint", spawnPoint);
 
 				Vector4 spawnDirection = Random.insideUnitCircle;
 				shader.SetVector("SpawnDirection", spawnDirection);
 
-				Vector4 spawnColor = new Vector4(Random.value, Random.value, Random.value, 1.0f);
+				Vector4 spawnColor = Vector4.one;// new Vector4(Random.value, Random.value, Random.value, 1.0f);
 				shader.SetVector("SpawnColor", spawnColor);
 				shader.SetFloat("SpawnCircleRadius", spawnCircleRadius);
 
@@ -194,11 +195,12 @@ public class Exercise03 : MonoBehaviour
 				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
 				Vector4 removePoint = texCoord * TexResolution;
 				shader.SetVector("RemovePoint", removePoint);
+				print("Remove point " + removePoint);
 
 				int kernelHandle = shader.FindKernel("RemoveBoids");
 				ComputeBuffer currentIndexBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
 				ComputeBuffer nextIndexBuffer = useFirstBuffer ? indexBuffer1 : indexBuffer0;
-				nextIndexBuffer.SetCounterValue(0);
+				//nextIndexBuffer.SetCounterValue(0);
 
 				int[] values = new int[4];
 				ComputeBuffer.CopyCount(currentIndexBuffer, countBuffer, 0);
@@ -210,13 +212,14 @@ public class Exercise03 : MonoBehaviour
 				shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
 				shader.SetBuffer(kernelHandle, "IndexBuffer", currentIndexBuffer);
 				shader.SetBuffer(kernelHandle, "AppendIndexBuffer", nextIndexBuffer);
+				shader.SetBuffer(kernelHandle, "AppendIndexBuffer2", deadIndexBuffer);
 				
 				shader.Dispatch(kernelHandle, 1 + ((currentBoidCount - 32) / 32), 1, 1);
-				print("how many thread groups? " + (1 + ((currentBoidCount - 32) / 32)));
+	//			print("how many thread groups? " + (1 + ((currentBoidCount - 32) / 32)));
 
 				useFirstBuffer = !useFirstBuffer;
 
-				print("Removing. Use first? " + useFirstBuffer + " boid count " + currentBoidCount);
+//				print("Removing. Use first? " + useFirstBuffer + " boid count " + currentBoidCount);
 
 			}
 		}
