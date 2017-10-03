@@ -59,8 +59,6 @@
 				float3 worldPosition = data.xyz + localPosition;
 				float3 worldNormal = v.normal;
 
-
-
 				float3 ndotl = saturate(dot(worldNormal, _WorldSpaceLightPos0.xyz));
 				float3 ambient = ShadeSH9(float4(worldNormal, 1.0f));
 				float3 diffuse = (ndotl * _LightColor0.rgb);
