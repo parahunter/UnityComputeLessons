@@ -50,11 +50,6 @@ public class Example03 : MonoBehaviour
 		boidMaxCount = 32 + (boidMaxCount / 32) * 32;
 		
 		boidBuffer = new ComputeBuffer(boidMaxCount, sizeof(float) * 8, ComputeBufferType.Default);
-
-		BoidData zeroBoid;
-		zeroBoid.position = Vector2.zero;
-		zeroBoid.direction = Vector2.zero;
-		zeroBoid.color = Vector4.zero;
 		
 		indexBuffer0 = new ComputeBuffer(boidMaxCount, sizeof(uint), ComputeBufferType.Append);
 		indexBuffer1 = new ComputeBuffer(boidMaxCount, sizeof(uint), ComputeBufferType.Append);
@@ -101,17 +96,13 @@ public class Example03 : MonoBehaviour
 		uint[] ConsumeIds = new uint[boidMaxCount];
 		for (uint i = 0; i < boidMaxCount; i++)
 			ConsumeIds[i] = i;
-
-
-		//indexBuffer0.SetData(ConsumeIds);
+		
 		indexBuffer0.SetCounterValue(0);
 		indexBuffer1.SetCounterValue(0);
-
 		
 		deadIndexBuffer.SetData(ConsumeIds);
 		deadIndexBuffer.SetCounterValue((uint)(boidMaxCount));
-
-
+		
 		useFirstBuffer = true;
 
 		SetShaderValues();
@@ -120,10 +111,7 @@ public class Example03 : MonoBehaviour
 	private void ComputeStepFrame()
 	{
 		SetShaderValues();
-		
-		//ComputeBuffer consumeBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
-		//ComputeBuffer appendBuffer  = !useFirstBuffer ? indexBuffer0 : indexBuffer1;
-		
+
 		// Clear Texture
 		int kernelHandle = shader.FindKernel("RenderBackground");
 		shader.SetTexture(kernelHandle, "Result", renderTexture);
