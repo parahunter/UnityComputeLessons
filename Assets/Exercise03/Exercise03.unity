@@ -253,7 +253,7 @@ MonoBehaviour:
   TexResolution: 256
   boidMaxCount: 4096
   boidStartCount: 0
-  deltaModifier: 0
+  deltaModifier: 22
   weight: 10
   separationWeight: 600
   alignWeight: 200

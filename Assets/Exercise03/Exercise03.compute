@@ -181,7 +181,7 @@ float SpawnCircleRadius;
 void AddBoids(uint3 id : SV_DispatchThreadID)
 {
 	int index = ConsumeIndexBuffer.Consume();
-	 
+	
 	float radians = id.x * (TWO_PI / 32.0);
 	float2 offset = float2(cos(radians), sin(radians));
 

@@ -106,15 +106,15 @@ public class Exercise03 : MonoBehaviour
 		}
 
 		boidBuffer.SetData(boidArray);
-
-		uint[] ConsumeIds = new uint[boidMaxCount];
-		for (uint i = 0; i < boidMaxCount; i++)
-			ConsumeIds[i] = i;
 		
 		//indexBuffer0.SetData(ConsumeIds);
 		indexBuffer0.SetCounterValue(0);
 		indexBuffer1.SetCounterValue(0);
-		
+
+		uint[] ConsumeIds = new uint[boidMaxCount];
+		for (uint i = 0; i < boidMaxCount; i++)
+			ConsumeIds[i] = i;
+
 		deadIndexBuffer.SetData(ConsumeIds);
 		deadIndexBuffer.SetCounterValue((uint)(boidMaxCount));
 
@@ -148,7 +148,7 @@ public class Exercise03 : MonoBehaviour
 		// Do Boid Pass
 		kernelIndex = shader.FindKernel("SimulateBoids");
 		shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
-		shader.SetBuffer(kernelIndex, "IndexBuffer", indexBuffer0);
+		shader.SetBuffer(kernelIndex, "IndexBuffer", currentIndexBuffer);
 		shader.SetTexture(kernelIndex, "Result", renderTexture);
 		shader.Dispatch(kernelIndex, 1 + ((currentBoidCount - 32) / 32), 1, 1);
 
@@ -160,6 +160,8 @@ public class Exercise03 : MonoBehaviour
 
 	void Update()
 	{
+		ComputeStepFrame();
+
 		RaycastHit hit;
 		Ray mr = Camera.main.ScreenPointToRay(Input.mousePosition);
 		
@@ -177,16 +179,16 @@ public class Exercise03 : MonoBehaviour
 
 				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
 				Vector4 spawnPoint = texCoord * TexResolution;
-				print("Spawn point " + spawnPoint);
+			//	print("Spawn point " + spawnPoint);
 				shader.SetVector("SpawnPoint", spawnPoint);
 
 				Vector4 spawnDirection = Random.insideUnitCircle;
 				shader.SetVector("SpawnDirection", spawnDirection);
 
-				Vector4 spawnColor = Vector4.one;// new Vector4(Random.value, Random.value, Random.value, 1.0f);
+				Vector4 spawnColor = new Vector4(Random.value, Random.value, Random.value, 1.0f);
 				shader.SetVector("SpawnColor", spawnColor);
 				shader.SetFloat("SpawnCircleRadius", spawnCircleRadius);
-
+				
 				shader.Dispatch(kernelIndex, 1, 1, 1);
 			}
 
@@ -200,7 +202,7 @@ public class Exercise03 : MonoBehaviour
 				int kernelHandle = shader.FindKernel("RemoveBoids");
 				ComputeBuffer currentIndexBuffer = useFirstBuffer ? indexBuffer0 : indexBuffer1;
 				ComputeBuffer nextIndexBuffer = useFirstBuffer ? indexBuffer1 : indexBuffer0;
-				//nextIndexBuffer.SetCounterValue(0);
+				nextIndexBuffer.SetCounterValue(0);
 
 				int[] values = new int[4];
 				ComputeBuffer.CopyCount(currentIndexBuffer, countBuffer, 0);
@@ -215,7 +217,8 @@ public class Exercise03 : MonoBehaviour
 				shader.SetBuffer(kernelHandle, "AppendIndexBuffer2", deadIndexBuffer);
 				
 				shader.Dispatch(kernelHandle, 1 + ((currentBoidCount - 32) / 32), 1, 1);
-	//			print("how many thread groups? " + (1 + ((currentBoidCount - 32) / 32)));
+				print("how many thread groups? " + (1 + ((currentBoidCount - 32) / 32)));
+				print("num boids " + currentBoidCount);
 
 				useFirstBuffer = !useFirstBuffer;
 
@@ -223,8 +226,6 @@ public class Exercise03 : MonoBehaviour
 
 			}
 		}
-
-		ComputeStepFrame();
 
 		if (Input.GetKeyUp(KeyCode.R))
 			ResetComputeSim();
