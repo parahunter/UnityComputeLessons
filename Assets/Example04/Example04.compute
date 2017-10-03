@@ -1,9 +1,9 @@
 ﻿// NOT NONE OF THESE SHADERS ARE OPTIMAL THEY ARE SIMPLE!!!
 // See http://www.studiostyle.sk/dmagic/gallery/gfxmodes.htm
 // Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSHiRes
-#pragma kernel CSHiRes_OnlyRes
-#pragma kernel CSHiRes_ResCol
+#pragma kernel HiRes_OnlyRes
+#pragma kernel HiRes_ResCol
+#pragma kernel HiRes
 
 // Textures
 RWTexture2D<float4> Result;
@@ -75,7 +75,7 @@ int ConvColour(float3 sourceCol)
 // SV_GroupID your group will not be above NumGroupX,NumGroupY,1 
 // SV_GroupIndex = SV_GroupThreadID.z*dimx*dimy + SV_GroupThreadID.y*dimx + SV_GroupThreadID.x
 [numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
-void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID) 
+void HiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID) 
 {
 	float2 texCoord = float2(id.x / float(CELL_WIDTH * BLOCK_WIDTH), id.y / float(CELL_HEIGHT * BLOCK_HEIGHT));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
@@ -174,7 +174,7 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 
 // DEBUG :: Only Res
 [numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
-void CSHiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex) 
+void HiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex) 
 {
 	float2 texCoord = float2(id.x / float(CELL_WIDTH*BLOCK_WIDTH), id.y / float(CELL_HEIGHT*BLOCK_HEIGHT));
 	Result[id.xy] = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
@@ -182,7 +182,7 @@ void CSHiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex
 
 // DEBUG :: Res & Colour
 [numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
-void CSHiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID) 
+void HiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID) 
 {
 	float2 texCoord = float2(id.x / float(CELL_WIDTH*BLOCK_WIDTH), id.y / float(CELL_HEIGHT*BLOCK_HEIGHT));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);

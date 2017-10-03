@@ -16,9 +16,9 @@ public class Example04 : MonoBehaviour
 	public int mode = 0;
 	const int num_stages = 3;
 	string[] kernalStage = new string[num_stages]{
-		"CSHiRes_OnlyRes",
-		"CSHiRes_ResCol",
-		"CSHiRes"
+		"HiRes_OnlyRes",
+		"HiRes_ResCol",
+		"HiRes"
 	};
 
 	bool hasCreatedResources = false;

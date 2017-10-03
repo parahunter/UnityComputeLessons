@@ -1451,7 +1451,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 7200000, guid: 1e49aae5cb5df0246beb3f4ff4100a72, type: 3}
-  mode: 2
+  mode: 3
 --- !u!1 &1968529939
 GameObject:
   m_ObjectHideFlags: 0

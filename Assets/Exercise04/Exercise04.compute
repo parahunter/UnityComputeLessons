@@ -1,10 +1,11 @@
 ﻿// NOT NONE OF THESE SHADERS ARE OPTIMAL THEY ARE SIMPLE!!!
 // See http://www.studiostyle.sk/dmagic/gallery/gfxmodes.htm
 // Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSHiRes
-#pragma kernel CSHiRes_OnlyRes
-#pragma kernel CSHiRes_ResCol
- 
+#pragma kernel HiRes_OnlyRes
+#pragma kernel HiRes_ResCol
+#pragma kernel HiRes
+#pragma kernel MultiColor
+
 // Textures
 RWTexture2D<float4> Result;
 
@@ -17,23 +18,18 @@ SamplerState samplerSourceTex
 	AddressV = Clamp;
 };
 
-#define COL_COUNT 20
-static float3 colours[COL_COUNT] = {
-	float3(1.00, 0, 0),			//Red
-	float3(0.53, 0.00, 0.00),   //another Red
+#define COLOR_COUNT 16
+static float3 c64Colors[COLOR_COUNT] = {
+	float3(0.53, 0.00, 0.00),   // Red
 	float3(1.00, 0.47, 0.47),   // Light Red
-	
-	float3(0.00, 0.80, 0),   // Green
-	float3(0.00, 1, 0),   // Green
+
 	float3(0.80, 0.27, 0.80),   // Violet
 	float3(0.00, 0.80, 0.33),   // Green
-	float3(0.67, 1.00, 0.40),   // Light Green
+	float3(0.67, 1.00, 0.40),   // Light Greeb
 
-	float3(0.00, 0.00, 1),   // Blue
 	float3(0.00, 0.00, 0.67),   // Blue
 	float3(0.00, 0.53, 1.00),   // Light Blue
 	float3(0.67, 1.00, 0.93),   // Cyan
-
 
 	float3(0.93, 0.93, 0.47),   // Yellow
 	float3(0.87, 0.53, 0.33),   // Orange
@@ -45,15 +41,17 @@ static float3 colours[COL_COUNT] = {
 	float3(0.73, 0.73, 0.73),
 	float3(1.00, 1.00, 1.00)   // White
 };
+ 
+// C64 - HiRes 40x25 blocks of 8x8 cells with 2 c64 Colors 
+#define BLOCK_WIDTH 40
+#define BLOCK_HEIGHT 25
+#define CELL_WIDTH 8
+#define CELL_HEIGHT 8
 
-// C64 - HiRes 40x25 blocks of 8x8 cells with 2 colours 
-#define BLOCK_W 40
-#define BLOCK_H 25
-#define CELL_W 8
-#define CELL_H 8
+#define MULTI_COLOR_COUNT 4
 
-groupshared uint HiResColCount[CELL_W][CELL_H];
-groupshared uint ColTotals[COL_COUNT];
+groupshared uint C64ColorCount[CELL_WIDTH][CELL_HEIGHT];
+groupshared uint ColorTotals[COLOR_COUNT];
 
 float Epsilon = 1e-10;
 
@@ -62,9 +60,9 @@ int ConvColour(float3 sourceCol)
 	// Convert to C64 Colour
 	float minDist = 10000000.0;
 	int cMin = 0;
-	for (uint i = 0; i < COL_COUNT; i++)
+	for (uint i = 0; i < COLOR_COUNT; i++)
 	{
-		float d = length(sourceCol.rgb - colours[i]);
+		float d = length(sourceCol.rgb - c64Colors[i]);
 		if (d < minDist)
 		{
 			cMin = i;
@@ -75,54 +73,169 @@ int ConvColour(float3 sourceCol)
 	return cMin;
 }
 
-// SV_DispatchThreadID your global uint3 0,0,0 - dimx*NumGroupX,dimy*NumGroupY,1
-// SV_GroupThreadID your local uint3 will never be above dimx,dimy,1
-// SV_GroupID your group will not be above NumGroupX,NumGroupY,1 
-// SV_GroupIndex = SV_GroupThreadID.z*dimx*dimy + SV_GroupThreadID.y*dimx + SV_GroupThreadID.x
-[numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID)
+
+[numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
+void MultiColor(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID)
 {
-	float2 texCoord = float2(id.x / float(CELL_W * BLOCK_W), id.y / float(CELL_H * BLOCK_H));
+	float2 texCoord = float2(id.x / float(CELL_WIDTH * BLOCK_WIDTH), id.y / float(CELL_HEIGHT * BLOCK_HEIGHT));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 
 	// Convert to C64 Colour
 	uint c = ConvColour(res.rgb);
 
 	// Save then block & Sync
-	HiResColCount[gid.x][gid.y] = c;
+	C64ColorCount[gid.x][gid.y] = c;
 	GroupMemoryBarrierWithGroupSync();
 
 	// Each thread can count a single colour
 	// Note :: note the best method but simple
-	if (gindex < COL_COUNT)
+	if (gindex < COLOR_COUNT)
 	{
 		uint x, y;
-		ColTotals[gindex] = 0;
-		for (x = 0; x < CELL_W; x++)
+		ColorTotals[gindex] = 0;
+		for (x = 0; x < CELL_WIDTH; x++)
 		{
-			for (y = 0; y < CELL_H; y++)
+			for (y = 0; y < CELL_HEIGHT; y++)
 			{
-				if (HiResColCount[x][y] == gindex)
-					ColTotals[gindex] += 1;
+				if (C64ColorCount[x][y] == gindex)
+					ColorTotals[gindex] += 1;
 			}
 		}
 	}
 
 
 	GroupMemoryBarrierWithGroupSync();
-
 	Result[id.xy] = float4(0, 0, 0, 0);
 
 	// Single thread operation to find two biggest
 	if (gindex == 0)
 	{
 		uint g;
-		uint2 aCol = uint2(0, ColTotals[0]);
+		uint2 aCol = uint2(0, ColorTotals[0]);
+		uint2 bCol = uint2(20, 0);
+		uint2 cCol = uint2(20, 0);
+		uint2 dCol = uint2(20, 0);
+
+		//NOTE this would be more correct to do with a sort algorithm like bitonic sort to make it more flexible
+
+		for (g = 1; g < COLOR_COUNT; g++)
+		{
+			uint t = ColorTotals[g];
+			if (aCol.y < t)
+			{
+				bCol = aCol;
+				aCol = uint2(g, t);
+			}
+			else if (bCol.y < t)
+			{
+				bCol = uint2(g, t);
+			}
+			else if (cCol.y < t)
+			{
+				cCol = uint2(g, t);
+			}
+			else if (dCol.y < t)
+			{
+				dCol = uint2(g, t);
+			}
+		}
+
+		ColorTotals[0] = aCol.x;
+		ColorTotals[1] = bCol.x;
+		ColorTotals[2] = cCol.x;
+		ColorTotals[3] = dCol.x;
+		/* DEBUG
+		Result[id.xy + uint2(0, 0)] = float4(c64Colors[aCol.x], 1);
+		Result[id.xy + uint2(1, 0)] = float4(aCol.y/64.0, aCol.y/64.0, aCol.y/64.0, 1);
+		Result[id.xy + uint2(2, 0)] = float4(c64Colors[bCol.x], 1);
+		Result[id.xy + uint2(3, 0)] = float4(bCol.y/64.0, bCol.y/64.0, bCol.y/64.0, 1);
+		*/
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	/* DEBUG
+	if (gid.y == 0) {
+	if (gid.x < 4) {
+	res.rgb = c64Colors[ColorTotals[0]];
+	} else {
+	res.rgb = c64Colors[ColorTotals[1]];
+	}
+	Result[id.xy] = res;
+	return;
+	}
+	*/
+
+	// Def made the cut
+	if ((c == ColorTotals[0]) || (c == ColorTotals[1]))
+	{
+		Result[id.xy] = float4(c64Colors[c], 1);
+		return;
+	}
+
+	uint resultIndex = 0;
+	float lastLength = length(res.rgb - c64Colors[ColorTotals[resultIndex]]);
+
+	for (int i = 1; i < MULTI_COLOR_COUNT; i++)
+	{
+		float currentLength = length(res.rgb - c64Colors[ColorTotals[i]]);
+		if (currentLength < lastLength)
+		{
+			lastLength = currentLength;
+			resultIndex = i;
+		}
+	}
+
+	Result[id.xy] = float4(c64Colors[resultIndex], 1);
+}
+
+// SV_DispatchThreadID your global uint3 0,0,0 - dimx*NumGroupX,dimy*NumGroupY,1
+// SV_GroupThreadID your local uint3 will never be above dimx,dimy,1
+// SV_GroupID your group will not be above NumGroupX,NumGroupY,1 
+// SV_GroupIndex = SV_GroupThreadID.z*dimx*dimy + SV_GroupThreadID.y*dimx + SV_GroupThreadID.x
+[numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
+void HiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID)
+{
+	float2 texCoord = float2(id.x / float(CELL_WIDTH * BLOCK_WIDTH), id.y / float(CELL_HEIGHT * BLOCK_HEIGHT));
+	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
+
+	// Convert to C64 Colour
+	uint c = ConvColour(res.rgb);
+
+	// Save then block & Sync
+	C64ColorCount[gid.x][gid.y] = c;
+	GroupMemoryBarrierWithGroupSync();
+
+	// Each thread can count a single colour
+	// Note :: note the best method but simple
+	if (gindex < COLOR_COUNT)
+	{
+		uint x, y;
+		ColorTotals[gindex] = 0;
+		for (x = 0; x < CELL_WIDTH; x++)
+		{
+			for (y = 0; y < CELL_HEIGHT; y++)
+			{
+				if (C64ColorCount[x][y] == gindex)
+					ColorTotals[gindex] += 1;
+			}
+		}
+	}
+
+
+	GroupMemoryBarrierWithGroupSync();
+	Result[id.xy] = float4(0, 0, 0, 0);
+
+	// Single thread operation to find two biggest
+	if (gindex == 0)
+	{
+		uint g;
+		uint2 aCol = uint2(0, ColorTotals[0]);
 		uint2 bCol = uint2(20, 0);
 
-		for (g = 1; g < COL_COUNT; g++)
+		for (g = 1; g < COLOR_COUNT; g++)
 		{
-			uint t = ColTotals[g];
+			uint t = ColorTotals[g];
 			if (aCol.y < t)
 			{
 				bCol = aCol;
@@ -134,13 +247,12 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 			}
 		}
 
-		ColTotals[0] = aCol.x;
-		ColTotals[1] = bCol.x;
-
+		ColorTotals[0] = aCol.x;
+		ColorTotals[1] = bCol.x;
 		/* DEBUG
-		Result[id.xy + uint2(0, 0)] = float4(colours[aCol.x], 1);
+		Result[id.xy + uint2(0, 0)] = float4(c64Colors[aCol.x], 1);
 		Result[id.xy + uint2(1, 0)] = float4(aCol.y/64.0, aCol.y/64.0, aCol.y/64.0, 1);
-		Result[id.xy + uint2(2, 0)] = float4(colours[bCol.x], 1);
+		Result[id.xy + uint2(2, 0)] = float4(c64Colors[bCol.x], 1);
 		Result[id.xy + uint2(3, 0)] = float4(bCol.y/64.0, bCol.y/64.0, bCol.y/64.0, 1);
 		*/
 	}
@@ -150,9 +262,9 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 	/* DEBUG
 	if (gid.y == 0) {
 	if (gid.x < 4) {
-	res.rgb = colours[ColTotals[0]];
+	res.rgb = c64Colors[ColorTotals[0]];
 	} else {
-	res.rgb = colours[ColTotals[1]];
+	res.rgb = c64Colors[ColorTotals[1]];
 	}
 	Result[id.xy] = res;
 	return;
@@ -160,43 +272,43 @@ void CSHiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 
 	*/
 
 	// Def made the cut
-	if ((c == ColTotals[0]) || (c == ColTotals[1]))
+	if ((c == ColorTotals[0]) || (c == ColorTotals[1]))
 	{
-		Result[id.xy] = float4(colours[c], 1);
+		Result[id.xy] = float4(c64Colors[c], 1);
 		return;
 	}
 
 	// Which are we closer to
-	if (length(res.rgb - colours[ColTotals[0]]) < length(res.rgb - colours[ColTotals[1]]))
+	if (length(res.rgb - c64Colors[ColorTotals[0]]) < length(res.rgb - c64Colors[ColorTotals[1]]))
 	{
-		res.rgb = colours[ColTotals[0]];
+		res.rgb = c64Colors[ColorTotals[0]];
 	}
 	else
 	{
-		res.rgb = colours[ColTotals[1]];
+		res.rgb = c64Colors[ColorTotals[1]];
 	}
 
 	Result[id.xy] = res;
 }
 
 // DEBUG :: Only Res
-[numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex)
+[numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
+void HiRes_OnlyRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex)
 {
-	float2 texCoord = float2(id.x / float(CELL_W*BLOCK_W), id.y / float(CELL_H*BLOCK_H));
+	float2 texCoord = float2(id.x / float(CELL_WIDTH*BLOCK_WIDTH), id.y / float(CELL_HEIGHT*BLOCK_HEIGHT));
 	Result[id.xy] = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 }
 
 // DEBUG :: Res & Colour
-[numthreads(CELL_W, CELL_H, 1)]
-void CSHiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+[numthreads(CELL_WIDTH, CELL_HEIGHT, 1)]
+void HiRes_ResCol(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gid : SV_GroupThreadID, uint3 groupId : SV_GroupID)
 {
-	float2 texCoord = float2(id.x / float(CELL_W*BLOCK_W), id.y / float(CELL_H*BLOCK_H));
+	float2 texCoord = float2(id.x / float(CELL_WIDTH*BLOCK_WIDTH), id.y / float(CELL_HEIGHT*BLOCK_HEIGHT));
 	float4 res = SourceTex.SampleLevel(samplerSourceTex, texCoord, 0);
 
 	// Convert to C64 Colour
 	int c = ConvColour(res.rgb);
-	res.rgb = colours[c];
+	res.rgb = c64Colors[c];
 
 	//// DEBUG Show CE'LL Borders
 	if ((gid.x == 0) || (gid.y == 0))

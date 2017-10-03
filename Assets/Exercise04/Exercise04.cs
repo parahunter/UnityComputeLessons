@@ -14,11 +14,12 @@ public class Exercise04 : MonoBehaviour
 	const int cellHeight = 8;
 
 	public int mode = 0;
-	const int num_stages = 3;
+	const int num_stages = 4;
 	string[] kernalStage = new string[num_stages]{
-		"CSHiRes_OnlyRes",
-		"CSHiRes_ResCol",
-		"CSHiRes"
+		"HiRes_OnlyRes",
+		"HiRes_ResCol",
+		"HiRes",
+		"MultiColor"
 	};
 
 	bool hasCreatedResources = false;
