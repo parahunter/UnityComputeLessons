@@ -13,9 +13,9 @@ public class Example01 : MonoBehaviour
 	const int textureSize = 512;
 	const int kernelSize = 8;
 
-	int kernelIndex;
+	int kernelHandle;
 
-	// Use this for initialization
+	//Initialization of resources needed for the compute shader to run
 	void Start ()
 	{
 		texture = new RenderTexture(width: textureSize, height: textureSize, depth: 0);
@@ -23,18 +23,18 @@ public class Example01 : MonoBehaviour
 		texture.filterMode = FilterMode.Point;
 		texture.Create();
 
-		kernelIndex = computeShader.FindKernel("CSMain");
+		kernelHandle = computeShader.FindKernel("CSMain");
 
-		computeShader.SetTexture(kernelIndex: kernelIndex, name: "Result", texture: texture);
-
+		computeShader.SetTexture(kernelIndex: kernelHandle, name: "Result", texture: texture);
 		
 		GetComponent<Renderer>().material.mainTexture = texture;
     }
 
 	void Update()
 	{
+		//Ideally in this case you would only dispatch the compute shader 
 		computeShader.SetFloat("intensity", intensity);
-		computeShader.Dispatch(kernelIndex, textureSize / kernelSize, textureSize / kernelSize, 1);
+		computeShader.Dispatch(kernelHandle, textureSize / kernelSize, textureSize / kernelSize, 1);
 	}
 
 	void OnDisable()

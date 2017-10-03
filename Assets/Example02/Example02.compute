@@ -2,8 +2,6 @@
 #pragma kernel RenderBackground
 #pragma kernel SimulateParticles
 
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
-
 int TexSize;
 int RandOffset;
 float DeltaTime;
@@ -39,6 +37,7 @@ void SimulateParticles(uint3 id : SV_DispatchThreadID)
 	float2 attractionForce = AttractionPoint.xy - p.position;
 	float attractionForceLength = length(attractionForce);
 	
+	//max is to make sure we always apply a positive force
 	p.direction += attractionForce * max(0, AttractionPoint.z - attractionForceLength) * AttractionPoint.w * DeltaTime;
 		
 	// Update Position

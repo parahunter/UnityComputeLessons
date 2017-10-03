@@ -23,6 +23,9 @@ public class Example02 : MonoBehaviour
 		public float aliveTime;
 	}
 
+	const int positionOffset = 10;
+	const int directionMaxAmplitude = 50;
+
 	ComputeBuffer particleBuffer;
 
 	// Use this for initialization
@@ -60,8 +63,8 @@ public class Example02 : MonoBehaviour
 		for (int i = 0; i < particleAmount; i++)
 		{
 			Particle p = new Particle();
-			p.position = new Vector2(Random.Range(10, textureResolution - 10), Random.Range(10, textureResolution - 10));
-			p.direction = new Vector2(Random.Range(-50, +50), Random.Range(-50, +50));
+			p.position = new Vector2(Random.Range(positionOffset, textureResolution - positionOffset), Random.Range(positionOffset, textureResolution - positionOffset));
+			p.direction = new Vector2(Random.Range(-directionMaxAmplitude, directionMaxAmplitude), Random.Range(-directionMaxAmplitude, directionMaxAmplitude));
 			Color c = Random.ColorHSV(0, 1.0f, 0.5f, 1.0f, 0.5f, 1.0f);
 			p.color = new Vector4(c.r, c.g, c.b, 0.0f);
 			pArray[i] = p;
@@ -70,12 +73,10 @@ public class Example02 : MonoBehaviour
 		particleBuffer.SetData(pArray);
 		ComputeStepFrame();
 	}
-
-
+	
 	private void ComputeStepFrame()
 	{
 		//NOTE in production code you should only set uniform values when they change
-		computeShader.SetInt("RandOffset", (int)(Time.timeSinceLevelLoad * 100));
 		computeShader.SetInt("TexSize", textureResolution - 1);
 		computeShader.SetFloat("DeltaTime", Time.deltaTime);
 		computeShader.SetVector("AttractionPoint", attractionPoint);
@@ -104,6 +105,8 @@ public class Example02 : MonoBehaviour
 			if (Physics.Raycast(mr, out hit))
 			{
 				attractionPoint = hit.textureCoord * textureResolution;
+
+				//Use extra components to send this data over
 				attractionPoint.z = attractionRadius;
 				attractionPoint.w = attractionForce;
 			}
