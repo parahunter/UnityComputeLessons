@@ -14,12 +14,19 @@ struct Boid
 	float4 col;
 };
 
+RWStructuredBuffer<Boid> BoidBuffer;
+
+RWStructuredBuffer<float2> positionsBuffer;
+RWStructuredBuffer<float2> directionsBuffer;
+RWStructuredBuffer<float4> colors;
+
+
 int NumBoids;
 float4 Params;
 float4 Params2;
 float4 Params3;
 
-RWStructuredBuffer<Boid> BoidBuffer;
+
 ConsumeStructuredBuffer<uint> ConsumeIndexBuffer;
 AppendStructuredBuffer<uint> AppendIndexBuffer;
 StructuredBuffer<uint> IndexBuffer;
