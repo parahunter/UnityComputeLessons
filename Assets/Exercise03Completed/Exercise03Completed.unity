@@ -194,7 +194,6 @@ GameObject:
   - component: {fileID: 645041524}
   - component: {fileID: 645041523}
   - component: {fileID: 645041525}
-  - component: {fileID: 645041528}
   m_Layer: 0
   m_Name: BoidTexture
   m_TagString: Untagged
@@ -267,7 +266,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shader: {fileID: 7200000, guid: de4cc78261a2121478ed5c5156633124, type: 3}
   TexResolution: 256
-  boidMaxCount: 128
+  boidMaxCount: 1024
   boidStartCount: 0
   deltaModifier: 1
   weight: 10
@@ -301,32 +300,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &645041528
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 645041522}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 08976106177c4c34b8ac993a2688628a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shader: {fileID: 7200000, guid: 187302e3a5a6014448bedd3bc21f421e, type: 3}
-  TexResolution: 256
-  boidMaxCount: 128
-  boidStartCount: 0
-  deltaModifier: 1
-  weight: 10
-  separationWeight: 600
-  alignWeight: 200
-  cohesionWeight: 20
-  maxSpeed: 5
-  repelDist: 2
-  alignmentDist: 15
-  cohesionDist: 50
-  maxForce: 10
 --- !u!1 &733197601
 GameObject:
   m_ObjectHideFlags: 0

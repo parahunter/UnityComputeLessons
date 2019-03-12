@@ -152,8 +152,8 @@ public class Exercise03Completed : MonoBehaviour
 				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", indexBuffer0);
 				shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);
 
-				Vector2 texCoord = new Vector2(1, 1) - hit.textureCoord;
-				Vector4 spawnPoint = texCoord * TexResolution;
+				Vector2 spawnPoint = new Vector2(1, 1) - hit.textureCoord;
+				spawnPoint = spawnPoint * TexResolution;
 				shader.SetVector("SpawnPoint", spawnPoint);
 
 				Vector4 spawnDirection = Random.insideUnitCircle;

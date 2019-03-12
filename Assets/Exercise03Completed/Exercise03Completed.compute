@@ -20,12 +20,10 @@ RWStructuredBuffer<float2> positionsBuffer;
 RWStructuredBuffer<float2> directionsBuffer;
 RWStructuredBuffer<float4> colors;
 
-
 int NumBoids;
 float4 Params;
 float4 Params2;
 float4 Params3;
-
 
 ConsumeStructuredBuffer<uint> ConsumeIndexBuffer;
 AppendStructuredBuffer<uint> AppendIndexBuffer;
@@ -168,13 +166,16 @@ float4 SpawnPoint;
 float4 SpawnDirection;
 float4 SpawnColor;
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 1, 1)]
 void AddBoids(uint3 id : SV_DispatchThreadID)
 {
     int index = ConsumeIndexBuffer.Consume();
-	
+	 
     Boid b;
-    b.pos = SpawnPoint;
+    b.pos = SpawnPoint.xy; // + float2(id.x * 1.01, 0);
+    float radian = 2 * 3.14 * id.x / 32;
+    b.pos += float2(cos(radian), sin(radian)) * 10;//
+
     b.dir = SpawnDirection;
     b.col = SpawnColor;
 	
