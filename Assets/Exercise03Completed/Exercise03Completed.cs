@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class Example03 : MonoBehaviour
+public class Exercise03Completed : MonoBehaviour
 {
 	public ComputeShader shader;
 	public int TexResolution = 256;
@@ -22,7 +22,7 @@ public class Example03 : MonoBehaviour
 
 	new Renderer renderer;
 	RenderTexture renderTexture;
-	
+
 	struct BoidData
 	{
 		public Vector2 position;
@@ -48,13 +48,13 @@ public class Example03 : MonoBehaviour
 		renderer.enabled = true;
 
 		boidMaxCount = 32 + (boidMaxCount / 32) * 32;
-		
+
 		boidBuffer = new ComputeBuffer(boidMaxCount, sizeof(float) * 8, ComputeBufferType.Default);
-		
+
 		indexBuffer0 = new ComputeBuffer(boidMaxCount, sizeof(uint), ComputeBufferType.Append);
 		indexBuffer1 = new ComputeBuffer(boidMaxCount, sizeof(uint), ComputeBufferType.Append);
 		deadIndexBuffer = new ComputeBuffer(boidMaxCount, sizeof(uint), ComputeBufferType.Append);
-		
+
 		countBuffer = new ComputeBuffer(4, sizeof(uint), ComputeBufferType.IndirectArguments);
 
 		ResetComputeSim();
@@ -96,18 +96,18 @@ public class Example03 : MonoBehaviour
 		uint[] ConsumeIds = new uint[boidMaxCount];
 		for (uint i = 0; i < boidMaxCount; i++)
 			ConsumeIds[i] = i;
-		
+
 		indexBuffer0.SetCounterValue(0);
 		indexBuffer1.SetCounterValue(0);
-		
+
 		deadIndexBuffer.SetData(ConsumeIds);
 		deadIndexBuffer.SetCounterValue((uint)(boidMaxCount));
-		
+
 		useFirstBuffer = true;
 
 		SetShaderValues();
 	}
-	
+
 	private void ComputeStepFrame()
 	{
 		SetShaderValues();
@@ -116,14 +116,14 @@ public class Example03 : MonoBehaviour
 		int kernelHandle = shader.FindKernel("RenderBackground");
 		shader.SetTexture(kernelHandle, "Result", renderTexture);
 		shader.Dispatch(kernelHandle, TexResolution / 8, TexResolution / 8, 1);
-		
+
 		int[] values = new int[4];
 		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
 		countBuffer.GetData(values);
 		int currentBoidCount = values[0];
-		
+
 		shader.SetInt("NumBoids", currentBoidCount);
-		
+
 		// Do Boid Pass
 		kernelHandle = shader.FindKernel("SimulateBoids");
 		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
@@ -136,7 +136,7 @@ public class Example03 : MonoBehaviour
 
 		useFirstBuffer = !useFirstBuffer;
 	}
-		
+
 	void Update()
 	{
 		if (Input.GetMouseButtonDown(0))
@@ -147,7 +147,7 @@ public class Example03 : MonoBehaviour
 			if (Physics.Raycast(mr, out hit))
 			{
 				int kernelIndex = shader.FindKernel("AddBoids");
-				
+
 				shader.SetBuffer(kernelIndex, "ConsumeIndexBuffer", deadIndexBuffer);
 				shader.SetBuffer(kernelIndex, "AppendIndexBuffer", indexBuffer0);
 				shader.SetBuffer(kernelIndex, "BoidBuffer", boidBuffer);

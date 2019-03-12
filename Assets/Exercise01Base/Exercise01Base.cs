@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Example01 : MonoBehaviour
+public class Exercise01Base : MonoBehaviour
 {
 	[Range(0, 1f)]
 	[SerializeField] float intensity = 1;

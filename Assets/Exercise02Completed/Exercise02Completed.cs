@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Exercise02 : MonoBehaviour
+public class Exercise02Completed : MonoBehaviour
 {
 	public ComputeShader computeShader;
 	public int textureResolution = 256;

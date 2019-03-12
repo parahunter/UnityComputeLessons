@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class Example04 : MonoBehaviour
+public class Exercise04Base : MonoBehaviour
 {
 	public ComputeShader shader;
 
