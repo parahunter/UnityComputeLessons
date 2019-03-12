@@ -5,9 +5,6 @@
 #pragma kernel CSHiRes_OnlyRes
 #pragma kernel CSHiRes_ResCol
 
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
-
-
 // Textures
 RWTexture2D<float4> Result;
 

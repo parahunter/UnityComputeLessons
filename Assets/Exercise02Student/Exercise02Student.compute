@@ -1,0 +1,68 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel RenderBackground
+#pragma kernel SimulateParticles
+
+int TexSize;
+int RandOffset;
+float DeltaTime;
+float4 AttractionPoint;
+
+RWTexture2D<float4> Result;
+
+//const float bounceForceDamping = 0.8;
+
+struct Particle
+{
+	float2 position;
+	float2 direction;
+	float4 color;
+};
+
+RWStructuredBuffer<Particle> PartBuffer;
+
+// Draw Grid
+[numthreads(8, 8, 1)]
+void RenderBackground(uint3 id : SV_DispatchThreadID)
+{
+	Result[id.xy] = float4(0, 0, 0, 0);
+}
+
+// Main Thread
+[numthreads(256, 1, 1)]
+void SimulateParticles(uint3 id : SV_DispatchThreadID) 
+{
+	Particle p = PartBuffer[id.x];
+
+	// Update Force
+	float2 attractionForce = AttractionPoint.xy - p.position;
+	float attractionForceLength = length(attractionForce);
+	
+	//max is to make sure we always apply a positive force
+	p.direction += attractionForce * max(0, AttractionPoint.z - attractionForceLength) * AttractionPoint.w * DeltaTime;
+		
+	// Update Position
+	p.position += p.direction * DeltaTime;
+
+	// Hit Border
+	if (p.position.x < 0.0f) {
+		p.position.x = 0 - p.position.x;
+		p.direction.x = -p.direction.x;
+	}
+	else if (p.position.x > TexSize) {
+		p.position.x = TexSize*2.0 - p.position.x;
+		p.direction.x = -p.direction.x;
+	}
+
+	if (p.position.y < 0.0f) {
+		p.position.y = 0 - p.position.y;
+		p.direction.y = -p.direction.y;
+	}
+	else if (p.position.y > TexSize) {
+		p.position.y = TexSize * 2.0 - p.position.y;
+		p.direction.y = -p.direction.y;
+	}
+
+	// Render & Save
+	Result[p.position] = float4(p.color.rgb, 1.0);
+	PartBuffer[id.x] = p;
+}
