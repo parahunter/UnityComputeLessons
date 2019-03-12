@@ -5,7 +5,6 @@
 //#pragma kernel RenderMain
 #pragma kernel RenderBackground
 #pragma kernel GenerateMesh
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
 
 struct Boid
 {
@@ -15,12 +14,12 @@ struct Boid
 };
 
 RWStructuredBuffer<Boid> BoidBuffer;
+RWStructuredBuffer<uint> CountBuffer;
 
 RWStructuredBuffer<float2> positionsBuffer;
 RWStructuredBuffer<float2> directionsBuffer;
 RWStructuredBuffer<float4> colors;
 
-int NumBoids;
 float4 Params;
 float4 Params2;
 float4 Params3;
@@ -73,7 +72,7 @@ float2 maxVec(float2 v, float l)
 [numthreads(32, 1, 1)]
 void SimulateBoids(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= NumBoids)
+    if (id.x >= CountBuffer[0])
         return;
 
     uint bid = IndexBuffer[id.x];
@@ -85,7 +84,7 @@ void SimulateBoids(uint3 id : SV_DispatchThreadID)
     float3 cohesionSum = float3(0, 0, 0);
 
 	// For every boid in the system, check if it's too close
-    for (int i = 0; i < NumBoids; i++)
+    for (int i = 0; i < CountBuffer[0]; i++)
     {
         uint otherBid = IndexBuffer[i];
 		

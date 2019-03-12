@@ -119,13 +119,10 @@ public class Exercise03Completed : MonoBehaviour
 
 		int[] values = new int[4];
 		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
-		countBuffer.GetData(values);
-		int currentBoidCount = values[0];
-
-		shader.SetInt("NumBoids", currentBoidCount);
-
+	
 		// Do Boid Pass
 		kernelHandle = shader.FindKernel("SimulateBoids");
+		shader.SetBuffer(kernelHandle, "CountBuffer", countBuffer);
 		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
 		shader.SetBuffer(kernelHandle, "IndexBuffer", indexBuffer0);
 		shader.SetTexture(kernelHandle, "Result", renderTexture);

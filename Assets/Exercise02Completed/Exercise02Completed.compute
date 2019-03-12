@@ -2,8 +2,6 @@
 #pragma kernel RenderBackground
 #pragma kernel SimulateParticles
 
-#include "Assets\ClaireBlackshawComputeCrashCourse\NoiseInclude.compute"
-
 int TexSize;
 int RandOffset;
 float DeltaTime;

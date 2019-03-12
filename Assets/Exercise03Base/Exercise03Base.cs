@@ -37,6 +37,8 @@ public class Exercise03Base : MonoBehaviour
 
 	bool useFirstBuffer = true;
 
+	const int kernelSize = 32;
+
 	// Use this for initialization
 	void Start()
 	{
@@ -47,7 +49,7 @@ public class Exercise03Base : MonoBehaviour
 		renderer = GetComponent<Renderer>();
 		renderer.enabled = true;
 
-		boidMaxCount = 32 + (boidMaxCount / 32) * 32;
+		boidMaxCount = kernelSize + (boidMaxCount / kernelSize) * kernelSize;
 		
 		boidBuffer = new ComputeBuffer(boidMaxCount, sizeof(float) * 8, ComputeBufferType.Default);
 		
@@ -118,18 +120,15 @@ public class Exercise03Base : MonoBehaviour
 		shader.Dispatch(kernelHandle, TexResolution / 8, TexResolution / 8, 1);
 		
 		int[] values = new int[4];
-		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0);
-		countBuffer.GetData(values);
-		int currentBoidCount = values[0];
-		
-		shader.SetInt("NumBoids", currentBoidCount);
+		ComputeBuffer.CopyCount(indexBuffer0, countBuffer, 0); //get amount of boids from the index buffer's internal counter and transfer it to the count buffer
 		
 		// Do Boid Pass
 		kernelHandle = shader.FindKernel("SimulateBoids");
+		shader.SetBuffer(kernelHandle, "CountBuffer", countBuffer);
 		shader.SetBuffer(kernelHandle, "BoidBuffer", boidBuffer);
 		shader.SetBuffer(kernelHandle, "IndexBuffer", indexBuffer0);
 		shader.SetTexture(kernelHandle, "Result", renderTexture);
-		shader.Dispatch(kernelHandle, 1 + ((boidMaxCount - 32) / 32), 1, 1);
+		shader.Dispatch(kernelHandle, 1 + ((boidMaxCount - kernelSize) / kernelSize), 1, 1);
 
 		// Set Material
 		renderer.material.SetTexture("_MainTex", renderTexture);

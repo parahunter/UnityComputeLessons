@@ -94,7 +94,6 @@ public class Exercise02Completed : MonoBehaviour
 		renderer.material.SetTexture("_MainTex", renderTexture);
 	}
 
-
 	void Update()
 	{
 		attractionPoint = Vector4.zero;
