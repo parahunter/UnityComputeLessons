@@ -12,15 +12,13 @@ public class Exercise01Completed : MonoBehaviour
 	[SerializeField] float circleCenterX = 512;
 	[SerializeField] float circleCenterY = 512;
 
-
 	RenderTexture texture;
 
 	const int textureSize = 1024;
-	const int kernelSize = 4;
 
 	int kernelIndex;
 
-	const int blockSize = 2;
+	const int kernelSize = 32;
 	
 	// Use this for initialization
 	void Start()
@@ -43,7 +41,7 @@ public class Exercise01Completed : MonoBehaviour
 		computeShader.SetFloat("circleCenterX", circleCenterX);
 		computeShader.SetFloat("circleCenterY", circleCenterY);
 		
-		computeShader.Dispatch(kernelIndex, textureSize / (kernelSize * blockSize), textureSize / (kernelSize * blockSize), 1);
+		computeShader.Dispatch(kernelIndex, textureSize / kernelSize, textureSize / kernelSize, 1);
 	}
 
 	void OnDisable()

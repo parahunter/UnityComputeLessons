@@ -1,7 +1,7 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-#define KERNEL_SIZE 4
+#define KERNEL_SIZE 32
 
 float intensity;
 
@@ -18,14 +18,6 @@ RWTexture2D<float4> Result;
 [numthreads(KERNEL_SIZE, KERNEL_SIZE, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-	for (int x = 0; x < BLOCK_SIZE; x++)
-	{
-		for (int y = 0; y < BLOCK_SIZE; y++)
-		{
-			float2 v = float2(id.x * BLOCK_SIZE + x, id.y * BLOCK_SIZE + y);			
-			float l = length(v - float2(circleCenterX, circleCenterY));
-			
-			Result[v] = l < cirleRadius ? float4(1, 1, 1, 1) : float4(0, 0, 0, 0);
-		}
-	}
+	float l = length(id.xy - float2(circleCenterX, circleCenterY));			
+	Result[id.xy] = l < cirleRadius ? float4(1, 1, 1, 1) : float4(0, 0, 0, 0);
 }

@@ -19,7 +19,7 @@ public class Exercise01Base : MonoBehaviour
 	void Start ()
 	{
 		texture = new RenderTexture(width: textureSize, height: textureSize, depth: 0);
-		texture.enableRandomWrite = true;
+		texture.enableRandomWrite = true; //this allows the texture to be accessed by compute shaders as an unordered access view
 		texture.filterMode = FilterMode.Point;
 		texture.Create();
 
@@ -32,7 +32,7 @@ public class Exercise01Base : MonoBehaviour
 
 	void Update()
 	{
-		//Ideally in this case you would only dispatch the compute shader 
+		//Ideally in this case you would only dispatch the compute shader if the intensity changes
 		computeShader.SetFloat("intensity", intensity);
 		computeShader.Dispatch(kernelHandle, textureSize / kernelSize, textureSize / kernelSize, 1);
 	}
