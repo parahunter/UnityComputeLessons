@@ -12,12 +12,7 @@ struct Boid
 };
 
 RWStructuredBuffer<Boid> BoidBuffer;
-
 RWStructuredBuffer<uint> CountBuffer;
-
-RWStructuredBuffer<float2> positionsBuffer;
-RWStructuredBuffer<float2> directionsBuffer;
-RWStructuredBuffer<float4> colors;
 
 float4 Params;
 float4 Params2;

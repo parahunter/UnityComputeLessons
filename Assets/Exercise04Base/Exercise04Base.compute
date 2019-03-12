@@ -152,13 +152,6 @@ void HiRes(uint3 id : SV_DispatchThreadID, uint gindex : SV_GroupIndex, uint3 gi
 	}
 	*/
 
-	// Def made the cut
-	if ((c == ColorTotals[0]) || (c == ColorTotals[1])) 
-	{
-		Result[id.xy] = float4(c64Colors[c], 1);
-		return;
-	}
-
 	// Which are we closer to
 	if (length(res.rgb - c64Colors[ColorTotals[0]]) < length(res.rgb - c64Colors[ColorTotals[1]])) 
 	{

@@ -54,5 +54,4 @@ public class Exercise04Completed : MonoBehaviour
 		//A bit of a waste but only way Unity allows us to 
 		Graphics.Blit(outputTex, destination);
 	}
-
 }
